@@ -1,6 +1,6 @@
 # 📊 MonitoringDemo — End-to-End Observability with .NET Aspire
 
-A production-grade monitoring demo featuring a **.NET Minimal API** backend with rich OpenTelemetry instrumentation, a **React + shadcn/ui** glassmorphism dashboard, **PostgreSQL** database, and self-hosted **Prometheus** + **Grafana** — all orchestrated by **Aspire 13** on **.NET 10**.
+A monitoring demo featuring a **.NET Minimal API** backend with OpenTelemetry instrumentation, a lean **React** status page, **PostgreSQL**, and self-hosted **Prometheus** + **Grafana** — all orchestrated by **Aspire 13** on **.NET 10**.
 
 ## Architecture
 
@@ -23,7 +23,7 @@ A production-grade monitoring demo featuring a **.NET Minimal API** backend with
 │         ▲                 │                                 │
 │  ┌──────┴───────────────────┐                               │
 │  │  React Frontend          │                               │
-│  │  Vite + shadcn/ui        │                               │
+│  │  Vite                    │                               │
 │  │  :5173                   │                               │
 │  └──────────────────────────┘                               │
 └─────────────────────────────────────────────────────────────┘
@@ -34,7 +34,7 @@ A production-grade monitoring demo featuring a **.NET Minimal API** backend with
 - **OpenTelemetry Instrumentation** — Custom metrics (counters, histograms, gauges), structured logs, and distributed traces
 - **Background Order Simulator** — Generates realistic telemetry data every 2-5 seconds for demo purposes
 - **Self-Hosted Monitoring Stack** — Prometheus scrapes `/metrics`, Grafana auto-provisions dashboards
-- **Glassmorphism UI** — Stunning frosted-glass dashboard with ambient glow effects, Recharts visualizations
+- **Lean status page** — Live order statistics and recent activity, with detailed visualization left to Grafana
 - **Aspire Orchestration** — Single `dotnet run` starts everything: database, monitoring, API, and frontend
 
 ## Prerequisites
@@ -117,15 +117,9 @@ Aspire will automatically:
 - Structured logging with scopes via ILogger
 - Exported via OpenTelemetry to Aspire Dashboard
 
-## 🎨 Frontend Design
+## 🎨 Frontend
 
-The dashboard uses a **glassmorphism** design language ("Obsidian & Cyberpunk" theme):
-- Frosted glass cards with `backdrop-filter: blur(16px) saturate(180%)`
-- Ambient radial glow orbs (cyan, indigo, fuchsia)
-- Specular edge highlights and directional borders
-- Pulsing status beacons for health indicators
-- SVG micro-noise texture for anti-banding
-- Accessibility: `prefers-reduced-transparency` fallbacks
+The frontend intentionally stays small: it shows API-backed order statistics, recent orders, a test-order action, and links to the dedicated monitoring tools. Grafana remains the place for detailed charts and telemetry analysis.
 
 ## License
 

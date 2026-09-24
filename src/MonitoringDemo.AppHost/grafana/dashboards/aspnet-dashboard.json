@@ -1,0 +1,59 @@
+{
+  "uid": "monitoring-demo",
+  "title": "MonitoringDemo - API Service",
+  "refresh": "5s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "HTTP Request Rate",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [{ "expr": "rate(http_server_request_duration_seconds_count[1m])" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP Request Duration P95",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket[1m])) by (le))" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Orders Created Rate",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [{ "expr": "rate(orders_created_total[1m])" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Orders Failed Rate",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [{ "expr": "rate(orders_failed_total[1m])" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Order Processing Duration P95",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(order_processing_duration_ms_bucket[1m])) by (le))" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Active Orders",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [{ "expr": "active_orders_count" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "GC Heap Size",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "targets": [{ "expr": "process_runtime_dotnet_gc_heap_size_bytes" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Thread Pool Threads",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "targets": [{ "expr": "process_runtime_dotnet_thread_pool_threads_count" }]
+    }
+  ]
+}

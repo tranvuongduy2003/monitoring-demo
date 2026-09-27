@@ -10,6 +10,7 @@ import { OrdersPage } from '@/pages/OrdersPage';
 import { OverviewPage } from '@/pages/OverviewPage';
 import { PrometheusPage } from '@/pages/PrometheusPage';
 import { TracesPage } from '@/pages/TracesPage';
+import { GrafanaPage } from '@/pages/GrafanaPage';
 
 const pages: Record<AppRoute, { title: string; content: ReactNode }> = {
   overview: { title: 'Overview', content: <OverviewPage /> },
@@ -21,6 +22,7 @@ const pages: Record<AppRoute, { title: string; content: ReactNode }> = {
   prometheus: { title: 'Prometheus', content: <PrometheusPage /> },
   logs: { title: 'Logs', content: <LogsPage /> },
   traces: { title: 'Traces', content: <TracesPage /> },
+  grafana: { title: 'Grafana', content: <GrafanaPage /> },
   learn: { title: 'Learn & tools', content: <LearnPage /> },
 };
 

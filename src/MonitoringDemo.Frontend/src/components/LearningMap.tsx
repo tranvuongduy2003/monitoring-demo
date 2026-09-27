@@ -11,6 +11,8 @@ const concepts = [
   ['Endpoint configuration', 'Signal-specific environment variables override the generic OTLP endpoint'],
   ['Collector pipeline', 'Receivers, ordered processors, and exporters form one independent pipeline per signal'],
   ['Memory limiter', 'Soft-limit backpressure protects the Collector before batching and export'],
+  ['Grafana dashboards', 'Panels combine queries, transformations, units, thresholds, and reusable variables'],
+  ['Grafana alerting', 'Rules evaluate queries into Normal, Pending, Alerting, No Data, and Error states'],
 ];
 
 export function LearningMap() {

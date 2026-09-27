@@ -10,6 +10,7 @@ const areas = [
   { route: 'prometheus', label: 'Prometheus', description: 'Understand scraping, PromQL, recording rules, alerts, and TSDB.', accent: 'orange', value: 'Time series' },
   { route: 'logs', label: 'Logs', description: 'Generate structured events and investigate them with LogQL.', accent: 'emerald', value: 'Events' },
   { route: 'traces', label: 'Traces', description: 'Follow distributed requests through spans and context propagation.', accent: 'rose', value: 'Request journeys' },
+  { route: 'grafana', label: 'Grafana', description: 'Turn multi-signal queries into dashboards, annotations, and actionable alerts.', accent: 'orange', value: 'Visualization' },
 ];
 
 export function OverviewPage() {

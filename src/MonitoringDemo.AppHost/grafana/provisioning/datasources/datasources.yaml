@@ -17,6 +17,11 @@ datasources:
     url: $LOKI_DATASOURCE_URL
     jsonData:
       maxLines: 1000
+      derivedFields:
+        - name: TraceID
+          matcherRegex: 'trace[_\.]id[=\": ]+([a-f0-9]{32})'
+          datasourceUid: tempo
+          url: '$${__value.raw}'
     editable: false
   - name: Tempo
     uid: tempo
@@ -36,4 +41,14 @@ datasources:
         filterBySpanID: true
       nodeGraph:
         enabled: true
+      tracesToMetrics:
+        datasourceUid: prometheus
+        spanStartTimeShift: -2m
+        spanEndTimeShift: 2m
+        tags:
+          - key: service.name
+            value: service_name
+        queries:
+          - name: Request rate
+            query: 'sum(rate(http_server_request_duration_seconds_count{service_name="$${__span.tags[\"service.name\"]}"}[$${__rate_interval}]))'
     editable: false

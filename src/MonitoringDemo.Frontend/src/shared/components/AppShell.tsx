@@ -10,6 +10,7 @@ export type AppRoute =
   | 'prometheus'
   | 'logs'
   | 'traces'
+  | 'grafana'
   | 'learn';
 
 type NavigationItem = {
@@ -30,6 +31,7 @@ const navigationGroups: { label: string; items: NavigationItem[] }[] = [
       { route: 'prometheus', label: 'Prometheus', icon: 'prometheus' },
       { route: 'logs', label: 'Logs', icon: 'logs' },
       { route: 'traces', label: 'Traces', icon: 'traces' },
+      { route: 'grafana', label: 'Grafana', icon: 'grafana' },
     ],
   },
   { label: 'Reference', items: [{ route: 'learn', label: 'Learn & tools', icon: 'learn' }] },
@@ -89,7 +91,7 @@ export function AppShell({ activeRoute, children }: { activeRoute: AppRoute; chi
   );
 }
 
-type IconName = 'overview' | 'orders' | 'telemetry' | 'otlp' | 'collector' | 'metrics' | 'prometheus' | 'logs' | 'traces' | 'learn';
+type IconName = 'overview' | 'orders' | 'telemetry' | 'otlp' | 'collector' | 'metrics' | 'prometheus' | 'logs' | 'traces' | 'grafana' | 'learn';
 
 function NavIcon({ name }: { name: IconName }) {
   const paths: Record<IconName, ReactNode> = {
@@ -102,6 +104,7 @@ function NavIcon({ name }: { name: IconName }) {
     prometheus: <><path d="M12 3c2 4-1 5 2 8 1-2 3-3 3-6 3 3 4 6 3 9-1 5-5 7-8 7s-7-2-8-7c-1-4 2-7 5-10 0 3 1 5 3 6 2-3-1-4 0-7Z" /><path d="M8 16h8" /></>,
     logs: <><path d="M5 3h14v18H5z" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
     traces: <><circle cx="5" cy="6" r="2" /><circle cx="19" cy="6" r="2" /><circle cx="12" cy="18" r="2" /><path d="M7 6h10M6 8l5 8m7-8-5 8" /></>,
+    grafana: <><path d="M5 19a8 8 0 1 1 14-6" /><path d="M8 19a5 5 0 1 1 9-4" /><path d="M12 19a2 2 0 1 1 3-2" /></>,
     learn: <><path d="M4 5c3-1 6 0 8 2v14c-2-2-5-3-8-2V5Zm16 0c-3-1-6 0-8 2v14c2-2 5-3 8-2V5Z" /></>,
   };
 

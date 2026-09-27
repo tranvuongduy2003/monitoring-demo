@@ -45,7 +45,7 @@ Browser
 | Area | Responsibility |
 |---|---|
 | **Aspire AppHost** | Loads DevOps environment settings, starts every resource, injects service references, performs dependency health checks, and exposes local endpoints. |
-| **React frontend** | Displays order, metric, logging, and distributed tracing labs. Vite proxies `/api/*` requests to the API, so the browser does not need an internal service address. |
+| **React frontend** | Displays order, metric, logging, tracing, and Grafana learning labs. Vite proxies `/api/*` requests to the API, so the browser does not need an internal service address. |
 | **API service** | Provides order/product endpoints, telemetry analytics, health checks, and the Prometheus `/metrics` endpoint. |
 | **OpenTelemetry Collector** | Receives OTLP over gRPC or HTTP, applies memory limiting and batching, and routes each signal to its configured exporters. |
 | **Background services** | Continuously create sample orders, metrics, and structured logs so dashboards contain useful data immediately. |
@@ -73,10 +73,12 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 - Live Fundamental PromQL lab covering metric selection, label filtering, instant and range vectors, `sum`, `avg`, `min`, `max`, `count`, `rate`, `increase`, `by`, `without`, and `histogram_quantile`
 - Live distributed tracing lab covering traces, trace/span IDs, roots, parent-child relationships, durations, attributes, events, statuses, waterfalls, and TraceQL
 - Live context propagation lab covering distributed context, W3C Trace Context, `traceparent`, `tracestate`, HTTP headers, gRPC metadata, and fundamental baggage
-- Provisioned Grafana data sources and dashboards
+- Dedicated Grafana lab covering data sources, dashboards, panels, PromQL/LogQL/TraceQL queries, variables, Explore, annotations, and fundamental alerting
+- Provisioned Grafana data sources, cross-signal correlations, dashboards, template variables, Loki annotations, and a Grafana-managed alert rule
+- Repeatable Grafana interaction seeding with query volume, errors, dashboard views, data-source latency, panel usage, annotations, and recent-activity analytics
 - Background order simulation, repeatable metric/trace seed endpoints, startup trace scenarios, and continuous bounded metric seeding so every visualization has test data
 - File-based target discovery plus provisioned recording and alerting rules
-- React workspace with focused pages for orders, OpenTelemetry, OTLP, Collector, metrics, Prometheus, logs, traces, and learning resources
+- React workspace with focused pages for orders, OpenTelemetry, OTLP, Collector, metrics, Prometheus, logs, traces, Grafana, and learning resources
 - Responsive application shell with persistent desktop navigation and a mobile sidebar
 - Domain-oriented frontend with strict `@/` absolute imports
 - Environment-driven local and DevOps configuration

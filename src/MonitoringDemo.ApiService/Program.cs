@@ -20,6 +20,7 @@ builder.Services.AddSingleton<TracingDemoSeeder>();
 builder.Services.AddSingleton<OpenTelemetryLabService>();
 builder.Services.AddSingleton<OtlpLabService>();
 builder.Services.AddSingleton<CollectorLabService>();
+builder.Services.AddSingleton<GrafanaLabService>();
 builder.Services.AddHostedService<BackgroundOrderSimulator>();
 builder.Services.AddHostedService<LoggingSeedService>();
 builder.Services.AddHostedService<MetricsSeedService>();
@@ -27,6 +28,7 @@ builder.Services.AddHostedService<TracingSeedService>();
 builder.Services.AddHostedService<OpenTelemetrySeedService>();
 builder.Services.AddHostedService<OtlpSeedService>();
 builder.Services.AddHostedService<CollectorSeedService>();
+builder.Services.AddHostedService<GrafanaSeedService>();
 builder.Services.AddHttpClient<LokiQueryService>();
 builder.Services.AddHttpClient<PrometheusQueryService>();
 builder.Services.AddHttpClient<TempoQueryService>();
@@ -68,6 +70,7 @@ app.MapTracingEndpoints();
 app.MapOpenTelemetryEndpoints();
 app.MapOtlpEndpoints();
 app.MapCollectorEndpoints();
+app.MapGrafanaEndpoints();
 app.MapDemoEndpoints();
 
 try 

@@ -45,13 +45,14 @@ Browser
 | Area | Responsibility |
 |---|---|
 | **Aspire AppHost** | Loads DevOps environment settings, starts every resource, injects service references, performs dependency health checks, and exposes local endpoints. |
-| **React frontend** | Displays order, metric, and logging labs. Vite proxies `/api/*` requests to the API, so the browser does not need an internal service address. |
+| **React frontend** | Displays order, metric, logging, and distributed tracing labs. Vite proxies `/api/*` requests to the API, so the browser does not need an internal service address. |
 | **API service** | Provides order/product endpoints, telemetry analytics, health checks, and the Prometheus `/metrics` endpoint. |
 | **Background services** | Continuously create sample orders, metrics, and structured logs so dashboards contain useful data immediately. |
 | **PostgreSQL** | Stores products and orders. Aspire injects the generated database connection string into the API. |
 | **Prometheus** | Pulls metrics from `/metrics`; Grafana reads them with PromQL. |
 | **Loki** | Receives structured application logs over OTLP and serves LogQL queries to both the API and Grafana. |
-| **Grafana** | Uses provisioned Prometheus and Loki data sources plus repository-managed dashboards. |
+| **Tempo** | Receives OpenTelemetry traces over OTLP and serves TraceQL search plus trace-by-ID data to the API and Grafana. |
+| **Grafana** | Uses provisioned Prometheus, Loki, and Tempo data sources plus repository-managed dashboards. |
 | **Aspire Dashboard** | Displays resource state, distributed traces, metrics, and diagnostic information during local development. |
 
 Telemetry is correlated through request, correlation, trace, and span identifiers. Environment variables control public ports, container versions, credentials, retention, scrape intervals, and service URLs.
@@ -63,8 +64,9 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 - Prometheus metric scraping and Loki OTLP log storage
 - Live Prometheus architecture lab covering pull collection, scrape intervals, targets, jobs, instances, exporters, service discovery, TSDB retention, and rules
 - Live Fundamental PromQL lab covering metric selection, label filtering, instant and range vectors, `sum`, `avg`, `min`, `max`, `count`, `rate`, `increase`, `by`, `without`, and `histogram_quantile`
+- Live distributed tracing lab covering traces, trace/span IDs, roots, parent-child relationships, durations, attributes, events, statuses, waterfalls, and TraceQL
 - Provisioned Grafana data sources and dashboards
-- Background order simulation, repeatable telemetry seed endpoints, and continuous bounded metric seeding so range functions always have test data
+- Background order simulation, repeatable metric/trace seed endpoints, startup trace scenarios, and continuous bounded metric seeding so every visualization has test data
 - File-based target discovery plus provisioned recording and alerting rules
 - React dashboard with order, metric, logging, and LogQL learning views
 - Domain-oriented frontend with strict `@/` absolute imports
@@ -97,6 +99,7 @@ dotnet run --project src/MonitoringDemo.AppHost
 | API metrics | `http://localhost:5000/metrics` | — |
 | Prometheus | `http://localhost:9090` | — |
 | Loki | `http://localhost:3100/ready` | — |
+| Tempo | `http://localhost:3200/ready` | — |
 | Grafana | `http://localhost:3000` | `admin` / configured password |
 | Aspire dashboard | `https://localhost:17225` | Launch token |
 
@@ -124,7 +127,7 @@ src/
 │   └── src/
 │       ├── app/                      Application entry
 │       ├── pages/                    Page composition
-│       ├── domains/                  Orders, metrics, and logging
+│       ├── domains/                  Orders, metrics, logging, and tracing
 │       └── shared/                   Reusable UI, hooks, and services
 └── MonitoringDemo.ServiceDefaults/  Health checks and OpenTelemetry defaults
 ```
@@ -135,6 +138,12 @@ src/
 dotnet build MonitoringDemo.slnx
 npm --prefix src/MonitoringDemo.Frontend run build
 ```
+
+## Distributed tracing lab
+
+The API seeds successful, slow, and failed checkout traces at startup. Each trace contains nested validation, inventory, database, payment, provider, and messaging spans with bounded attributes, timestamped events, explicit status, and realistic duration differences. The **Seed 12 traces** button exports another repeatable batch through OpenTelemetry.
+
+The tracing panel queries Tempo directly with TraceQL, expands recent results through the trace-by-ID API, calculates trace/span analytics, and renders a selectable waterfall. Tempo may need several seconds to index a newly exported batch; the frontend polls automatically.
 
 ## License
 

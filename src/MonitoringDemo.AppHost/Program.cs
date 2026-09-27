@@ -30,6 +30,7 @@ var defaultPrometheusDataSourceUrl = $"http://host.docker.internal:{prometheusPo
 var defaultLokiDataSourceUrl = $"http://host.docker.internal:{lokiPort}";
 var defaultTempoDataSourceUrl = $"http://host.docker.internal:{tempoPort}";
 var defaultLokiBaseUrl = $"http://localhost:{lokiPort}";
+var defaultTempoBaseUrl = $"http://localhost:{tempoPort}";
 var defaultTempoOtlpEndpoint = $"http://localhost:{tempoOtlpHttpPort}/v1/traces";
 var defaultFrontendUrl = $"http://localhost:{frontendPort}";
 var defaultApiUrl = $"http://localhost:{apiPort}";
@@ -85,6 +86,7 @@ var apiService = builder.AddProject<Projects.MonitoringDemo_ApiService>("apiserv
     .WithReference(monitoringdb)
     .WithEnvironment("LOKI_OTLP_ENDPOINT", Get("LOKI_OTLP_ENDPOINT", $"{defaultLokiBaseUrl}/otlp/v1/logs"))
     .WithEnvironment("TEMPO_OTLP_ENDPOINT", Get("TEMPO_OTLP_ENDPOINT", defaultTempoOtlpEndpoint))
+    .WithEnvironment("Tempo__BaseUrl", Get("TEMPO_BASE_URL", defaultTempoBaseUrl))
     .WithEnvironment("Loki__BaseUrl", Get("LOKI_BASE_URL", defaultLokiBaseUrl))
     .WithEnvironment("Prometheus__BaseUrl", Get("PROMETHEUS_BASE_URL", defaultPrometheusUrl))
     .WithEnvironment("Prometheus__Retention", Get("PROMETHEUS_RETENTION_TIME", "15d"))

@@ -16,11 +16,14 @@ builder.AddNpgsqlDbContext<AppDbContext>("monitoringdb");
 builder.Services.AddSingleton<AppMetrics>();
 builder.Services.AddSingleton<AppActivitySource>();
 builder.Services.AddSingleton<MetricsDemoSeeder>();
+builder.Services.AddSingleton<TracingDemoSeeder>();
 builder.Services.AddHostedService<BackgroundOrderSimulator>();
 builder.Services.AddHostedService<LoggingSeedService>();
 builder.Services.AddHostedService<MetricsSeedService>();
+builder.Services.AddHostedService<TracingSeedService>();
 builder.Services.AddHttpClient<LokiQueryService>();
 builder.Services.AddHttpClient<PrometheusQueryService>();
+builder.Services.AddHttpClient<TempoQueryService>();
 
 builder.Services.AddCors(options =>
 {
@@ -55,6 +58,7 @@ app.MapOrderEndpoints();
 app.MapLoggingEndpoints();
 app.MapMetricsEndpoints();
 app.MapPrometheusEndpoints();
+app.MapTracingEndpoints();
 app.MapDemoEndpoints();
 
 try 

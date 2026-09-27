@@ -9,12 +9,15 @@ import { OrdersDashboard } from '@/domains/orders/components/OrdersDashboard';
 import { useOrdersDashboard } from '@/domains/orders/hooks/useOrdersDashboard';
 import { PrometheusDashboard } from '@/domains/prometheus/components/PrometheusDashboard';
 import { usePrometheusDashboard } from '@/domains/prometheus/hooks/usePrometheusDashboard';
+import { TracingDashboard } from '@/domains/tracing/components/TracingDashboard';
+import { useTracingDashboard } from '@/domains/tracing/hooks/useTracingDashboard';
 
 export function DashboardPage() {
   const orders = useOrdersDashboard();
   const metrics = useMetricsDashboard();
   const prometheus = usePrometheusDashboard();
   const logging = useLoggingDashboard();
+  const tracing = useTracingDashboard();
   const reset = useDemoReset(async () => {
     await Promise.allSettled([
       orders.stats.refetch(),
@@ -23,6 +26,7 @@ export function DashboardPage() {
       prometheus.overview.refetch(),
       prometheus.fundamentals.refetch(),
       logging.analytics.refetch(),
+      tracing.overview.refetch(),
     ]);
   });
 
@@ -32,6 +36,7 @@ export function DashboardPage() {
       <MetricsDashboard model={metrics} />
       <PrometheusDashboard model={prometheus} />
       <LoggingDashboard model={logging} />
+      <TracingDashboard model={tracing} />
       <LearningMap />
       <MonitoringLinks />
     </main>

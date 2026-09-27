@@ -1,59 +1,96 @@
 {
   "uid": "monitoring-demo",
-  "title": "MonitoringDemo - API Service",
+  "title": "MonitoringDemo - API Metrics",
+  "tags": ["metrics", "prometheus", "learning"],
   "refresh": "5s",
-  "time": {
-    "from": "now-1h",
-    "to": "now"
-  },
+  "time": { "from": "now-1h", "to": "now" },
   "panels": [
     {
+      "id": 1,
       "type": "timeseries",
-      "title": "HTTP Request Rate",
+      "title": "Counter - order throughput by status",
+      "description": "A counter only increases. rate() converts its change into orders per second.",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-      "targets": [{ "expr": "rate(http_server_request_duration_seconds_count[1m])" }]
+      "targets": [{ "refId": "A", "expr": "sum(rate(orders_created_total[$__rate_interval])) by (order_status)", "legendFormat": "{{order_status}}" }]
     },
     {
+      "id": 2,
       "type": "timeseries",
-      "title": "HTTP Request Duration P95",
+      "title": "Gauge - active orders",
+      "description": "A gauge is a point-in-time value and can move up or down.",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-      "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_seconds_bucket[1m])) by (le))" }]
+      "targets": [{ "refId": "A", "expr": "active_orders", "legendFormat": "active" }]
     },
     {
+      "id": 3,
       "type": "timeseries",
-      "title": "Orders Created Rate",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-      "targets": [{ "expr": "rate(orders_created_total[1m])" }]
+      "title": "Histogram percentiles - p50 / p95 / p99",
+      "description": "histogram_quantile estimates percentiles from cumulative buckets.",
+      "gridPos": { "h": 9, "w": 16, "x": 0, "y": 8 },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum(rate(order_processing_duration_ms_bucket[$__rate_interval])) by (le))", "legendFormat": "p50" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum(rate(order_processing_duration_ms_bucket[$__rate_interval])) by (le))", "legendFormat": "p95" },
+        { "refId": "C", "expr": "histogram_quantile(0.99, sum(rate(order_processing_duration_ms_bucket[$__rate_interval])) by (le))", "legendFormat": "p99" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] }
     },
     {
+      "id": 4,
       "type": "timeseries",
-      "title": "Orders Failed Rate",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-      "targets": [{ "expr": "rate(orders_failed_total[1m])" }]
+      "title": "Histogram count and sum",
+      "description": "Every histogram exports _count and _sum in addition to _bucket series.",
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 8 },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(order_processing_duration_ms_count[$__rate_interval]))", "legendFormat": "observations/s" },
+        { "refId": "B", "expr": "sum(rate(order_processing_duration_ms_sum[$__rate_interval]))", "legendFormat": "milliseconds/s" }
+      ]
     },
     {
-      "type": "timeseries",
-      "title": "Order Processing Duration P95",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
-      "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(order_processing_duration_ms_bucket[1m])) by (le))" }]
+      "id": 5,
+      "type": "heatmap",
+      "title": "Histogram bucket distribution",
+      "description": "Explicit boundaries: 50, 100, 200, 500, 1000, and 2000 ms.",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 17 },
+      "targets": [{ "refId": "A", "expr": "sum(increase(order_processing_duration_ms_bucket[$__rate_interval])) by (le)", "format": "heatmap", "legendFormat": "{{le}}" }]
     },
     {
-      "type": "timeseries",
-      "title": "Active Orders",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
-      "targets": [{ "expr": "active_orders_count" }]
+      "id": 6,
+      "type": "stat",
+      "title": "Observed label cardinality",
+      "description": "Distinct status x category x source combinations. Keep labels bounded; never use order IDs.",
+      "gridPos": { "h": 9, "w": 6, "x": 12, "y": 17 },
+      "targets": [{ "refId": "A", "expr": "count(count by (order_status, product_category, traffic_source) (orders_created_total))" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" }
     },
     {
-      "type": "timeseries",
-      "title": "GC Heap Size",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
-      "targets": [{ "expr": "process_runtime_dotnet_gc_heap_size_bytes" }]
+      "id": 7,
+      "type": "stat",
+      "title": "Histogram mean duration",
+      "description": "Mean = rate(_sum) / rate(_count). This is not a percentile.",
+      "gridPos": { "h": 9, "w": 6, "x": 18, "y": 17 },
+      "targets": [{ "refId": "A", "expr": "sum(rate(order_processing_duration_ms_sum[$__rate_interval])) / sum(rate(order_processing_duration_ms_count[$__rate_interval]))" }],
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" }
     },
     {
+      "id": 8,
       "type": "timeseries",
-      "title": "Thread Pool Threads",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
-      "targets": [{ "expr": "process_runtime_dotnet_thread_pool_threads_count" }]
+      "title": "HTTP request time series",
+      "description": "Each label set is an independent time series sampled over time.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
+      "targets": [{ "refId": "A", "expr": "sum(rate(http_server_request_duration_seconds_count[$__rate_interval])) by (http_response_status_code)", "legendFormat": "HTTP {{http_response_status_code}}" }]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Runtime gauges",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
+      "targets": [
+        { "refId": "A", "expr": "process_runtime_dotnet_gc_heap_size_bytes", "legendFormat": "GC heap" },
+        { "refId": "B", "expr": "process_runtime_dotnet_thread_pool_threads_count", "legendFormat": "thread-pool threads" }
+      ]
     }
-  ]
+  ],
+  "schemaVersion": 39,
+  "version": 2
 }

@@ -82,6 +82,12 @@ public static class Extensions
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddMeter(serviceName)
+                    .AddView(
+                        "order_processing_duration_ms",
+                        new ExplicitBucketHistogramConfiguration
+                        {
+                            Boundaries = [50, 100, 200, 500, 1_000, 2_000]
+                        })
                     .AddPrometheusExporter();
 
                 if (hasAspireOtlpEndpoint)

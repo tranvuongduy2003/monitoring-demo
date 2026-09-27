@@ -13,8 +13,10 @@ builder.AddNpgsqlDbContext<AppDbContext>("monitoringdb");
 
 builder.Services.AddSingleton<AppMetrics>();
 builder.Services.AddSingleton<AppActivitySource>();
+builder.Services.AddSingleton<MetricsDemoSeeder>();
 builder.Services.AddHostedService<BackgroundOrderSimulator>();
 builder.Services.AddHostedService<LoggingSeedService>();
+builder.Services.AddHostedService<MetricsSeedService>();
 builder.Services.AddHttpClient<LokiQueryService>();
 
 builder.Services.AddCors(options =>
@@ -32,6 +34,7 @@ app.MapDefaultEndpoints();
 app.MapProductEndpoints();
 app.MapOrderEndpoints();
 app.MapLoggingEndpoints();
+app.MapMetricsEndpoints();
 
 try 
 {

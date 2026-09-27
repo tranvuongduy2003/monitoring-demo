@@ -91,7 +91,7 @@ public class BackgroundOrderSimulator : BackgroundService
             Worker = nameof(BackgroundOrderSimulator)
         });
 
-        _metrics.ActiveOrders.Add(1);
+        _metrics.OrderStarted();
         try
         {
             var quantity = Random.Shared.Next(
@@ -122,13 +122,11 @@ public class BackgroundOrderSimulator : BackgroundService
             await dbContext.SaveChangesAsync(stoppingToken);
 
             sw.Stop();
-            var metricTags = new TagList
-            {
-                { "order.status", status },
-                { "product.category", product.Category }
-            };
-            _metrics.OrderProcessingDuration.Record(sw.ElapsedMilliseconds, metricTags);
-            _metrics.OrdersCreated.Add(1, metricTags);
+            _metrics.RecordOrderProcessed(
+                sw.ElapsedMilliseconds,
+                status,
+                product.Category,
+                "simulator");
 
             activity?.SetTag("product.name", product.Name);
             activity?.SetTag("order.id", order.Id);
@@ -137,7 +135,6 @@ public class BackgroundOrderSimulator : BackgroundService
 
             if (isFailed)
             {
-                _metrics.OrdersFailed.Add(1, metricTags);
                 _logger.SimulatedOrderFailed(order.Id, product.Name, sw.ElapsedMilliseconds);
             }
             else if (sw.ElapsedMilliseconds > TelemetryConstants.SlowOperationThresholdMilliseconds)
@@ -151,7 +148,7 @@ public class BackgroundOrderSimulator : BackgroundService
         }
         finally
         {
-            _metrics.ActiveOrders.Add(-1);
+            _metrics.OrderFinished();
         }
     }
 }

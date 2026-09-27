@@ -102,6 +102,8 @@ Aspire will automatically:
 | `GET` | `/api/orders?limit=20` | Recent orders |
 | `POST` | `/api/orders` | Create order `{productId, quantity}` |
 | `GET` | `/api/orders/stats` | Dashboard statistics |
+| `GET` | `/api/metrics/analytics?minutes=60` | Rolling buckets, count/sum, percentiles, time series, and cardinality |
+| `POST` | `/api/metrics/seed?count=120` | Seed synthetic metric observations for repeatable testing |
 | `GET` | `/api/logging/analytics?minutes=60` | Live Loki volume by level and query catalog |
 | `POST` | `/api/logging/demo?level=Warning&includeException=true` | Emit a correlated teaching event |
 | `GET` | `/metrics` | Prometheus metrics |
@@ -110,10 +112,10 @@ Aspire will automatically:
 ## 🔭 Custom Telemetry
 
 ### Metrics (Prometheus)
-- `orders_created_total` — Counter of created orders (tags: status, category)
-- `orders_failed_total` — Counter of failed orders
-- `order_processing_duration_ms` — Histogram of processing time
-- `active_orders_count` — Gauge of pending orders
+- `orders_created_total` — Counter of processed orders (labels: status, category, traffic source)
+- `orders_failed_total` — Counter of failed orders with the same bounded labels
+- `order_processing_duration_ms` — Histogram with explicit 50/100/200/500/1000/2000 ms buckets, count, and sum
+- `active_orders` — Observable gauge of in-flight orders
 
 ### Traces
 - `MonitoringDemo.ApiService` — Custom activity source for business operations
@@ -128,8 +130,6 @@ Aspire will automatically:
 - Exception records retain stack traces and structured context
 - Exported via OpenTelemetry to both Aspire Dashboard and Loki
 - Queried with LogQL in the provisioned `MonitoringDemo - Logs & Correlation` Grafana dashboard
-
-See [LEARNING_REPORT.md](LEARNING_REPORT.md) for the guided lesson, architecture, query cookbook, and exercises.
 
 ## 🎨 Frontend
 

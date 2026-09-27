@@ -61,7 +61,7 @@ public static class OrderEndpoints
                 ProductCategory = product.Category
             });
 
-            metrics.ActiveOrders.Add(1);
+            metrics.OrderStarted();
             try
             {
                 bool isFailed = Random.Shared.NextDouble() < OrderFailureProbability;
@@ -80,13 +80,11 @@ public static class OrderEndpoints
                 await dbContext.SaveChangesAsync();
 
                 sw.Stop();
-                var metricTags = new TagList
-                {
-                    { "order.status", status },
-                    { "product.category", product.Category }
-                };
-                metrics.OrderProcessingDuration.Record(sw.ElapsedMilliseconds, metricTags);
-                metrics.OrdersCreated.Add(1, metricTags);
+                metrics.RecordOrderProcessed(
+                    sw.ElapsedMilliseconds,
+                    status,
+                    product.Category,
+                    "api");
 
                 activity?.SetTag("product.name", product.Name);
                 activity?.SetTag("order.id", order.Id);
@@ -95,7 +93,6 @@ public static class OrderEndpoints
 
                 if (isFailed)
                 {
-                    metrics.OrdersFailed.Add(1, metricTags);
                     logger.OrderFailed(order.Id, product.Name, sw.ElapsedMilliseconds);
                 }
                 else
@@ -107,7 +104,7 @@ public static class OrderEndpoints
             }
             finally
             {
-                metrics.ActiveOrders.Add(-1);
+                metrics.OrderFinished();
             }
         });
 

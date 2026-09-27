@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using System.Reflection;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
@@ -31,6 +33,10 @@ public static class Extensions
     public static IHostApplicationBuilder ConfigureOpenTelemetry(this IHostApplicationBuilder builder)
     {
         var serviceName = builder.Environment.ApplicationName;
+        var serviceVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString();
+        var serviceInstanceId = $"{Environment.MachineName}-{Environment.ProcessId}";
+        Activity.DefaultIdFormat = ActivityIdFormat.W3C;
+        Activity.ForceDefaultIdFormat = true;
         var hasAspireOtlpEndpoint =
             !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
         var hasLokiOtlpEndpoint = Uri.TryCreate(
@@ -73,7 +79,10 @@ public static class Extensions
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource
-                .AddService(serviceName)
+                .AddService(
+                    serviceName,
+                    serviceVersion: serviceVersion,
+                    serviceInstanceId: serviceInstanceId)
                 .AddAttributes(
                 [
                     new KeyValuePair<string, object>(

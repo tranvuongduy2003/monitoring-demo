@@ -17,10 +17,12 @@ builder.Services.AddSingleton<AppMetrics>();
 builder.Services.AddSingleton<AppActivitySource>();
 builder.Services.AddSingleton<MetricsDemoSeeder>();
 builder.Services.AddSingleton<TracingDemoSeeder>();
+builder.Services.AddSingleton<OpenTelemetryLabService>();
 builder.Services.AddHostedService<BackgroundOrderSimulator>();
 builder.Services.AddHostedService<LoggingSeedService>();
 builder.Services.AddHostedService<MetricsSeedService>();
 builder.Services.AddHostedService<TracingSeedService>();
+builder.Services.AddHostedService<OpenTelemetrySeedService>();
 builder.Services.AddHttpClient<LokiQueryService>();
 builder.Services.AddHttpClient<PrometheusQueryService>();
 builder.Services.AddHttpClient<TempoQueryService>();
@@ -59,6 +61,7 @@ app.MapLoggingEndpoints();
 app.MapMetricsEndpoints();
 app.MapPrometheusEndpoints();
 app.MapTracingEndpoints();
+app.MapOpenTelemetryEndpoints();
 app.MapDemoEndpoints();
 
 try 

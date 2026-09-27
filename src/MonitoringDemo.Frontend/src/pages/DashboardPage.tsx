@@ -5,6 +5,8 @@ import { LoggingDashboard } from '@/domains/logging/components/LoggingDashboard'
 import { useLoggingDashboard } from '@/domains/logging/hooks/useLoggingDashboard';
 import { MetricsDashboard } from '@/domains/metrics/components/MetricsDashboard';
 import { useMetricsDashboard } from '@/domains/metrics/hooks/useMetricsDashboard';
+import { OpenTelemetryDashboard } from '@/domains/opentelemetry/components/OpenTelemetryDashboard';
+import { useOpenTelemetryDashboard } from '@/domains/opentelemetry/hooks/useOpenTelemetryDashboard';
 import { OrdersDashboard } from '@/domains/orders/components/OrdersDashboard';
 import { useOrdersDashboard } from '@/domains/orders/hooks/useOrdersDashboard';
 import { PrometheusDashboard } from '@/domains/prometheus/components/PrometheusDashboard';
@@ -15,6 +17,7 @@ import { useTracingDashboard } from '@/domains/tracing/hooks/useTracingDashboard
 export function DashboardPage() {
   const orders = useOrdersDashboard();
   const metrics = useMetricsDashboard();
+  const openTelemetry = useOpenTelemetryDashboard();
   const prometheus = usePrometheusDashboard();
   const logging = useLoggingDashboard();
   const tracing = useTracingDashboard();
@@ -23,6 +26,7 @@ export function DashboardPage() {
       orders.stats.refetch(),
       orders.orders.refetch(),
       metrics.analytics.refetch(),
+      openTelemetry.overview.refetch(),
       prometheus.overview.refetch(),
       prometheus.fundamentals.refetch(),
       logging.analytics.refetch(),
@@ -33,6 +37,7 @@ export function DashboardPage() {
   return (
     <main className="page">
       <OrdersDashboard model={orders} reset={reset} />
+      <OpenTelemetryDashboard model={openTelemetry} />
       <MetricsDashboard model={metrics} />
       <PrometheusDashboard model={prometheus} />
       <LoggingDashboard model={logging} />

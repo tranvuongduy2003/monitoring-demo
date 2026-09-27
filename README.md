@@ -60,6 +60,8 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 ## Features
 
 - Custom OpenTelemetry counters, gauges, histograms, traces, and structured logs
+- Dedicated OpenTelemetry architecture lab covering the API, SDK, automatic and manual instrumentation, resources, semantic conventions, Tracer, Meter, Logger, and W3C propagators
+- Repeatable multi-signal OpenTelemetry seeding with an in-process timeline, per-operation analytics, error counts, and latency statistics
 - Correlation, request, trace, and span IDs across application logs
 - Prometheus metric scraping and Loki OTLP log storage
 - Live Prometheus architecture lab covering pull collection, scrape intervals, targets, jobs, instances, exporters, service discovery, TSDB retention, and rules

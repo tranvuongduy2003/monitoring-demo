@@ -989,6 +989,155 @@ button.span-row.selected { border-color: rgb(147 197 253 / 70%); transform: none
 .concepts .concept-grid { padding: 14px 0 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .concept-grid article { display: flex; flex-direction: column; gap: 6px; }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.otel-summary {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1px;
+  border-bottom: 1px solid rgb(203 213 225 / 50%);
+  background: rgb(203 213 225 / 45%);
+}
+
+.otel-summary article {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border-top: 3px solid transparent;
+  padding: 14px 16px 16px;
+  background: rgb(255 255 255 / 70%);
+}
+
+.otel-summary article.trace { border-top-color: #6366f1; }
+.otel-summary article.metric { border-top-color: #0ea5e9; }
+.otel-summary article.log { border-top-color: #14b8a6; }
+.otel-summary article.error { border-top-color: #ef4444; }
+.otel-summary span,
+.otel-summary small { overflow: hidden; color: #64748b; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.otel-summary strong { margin: 5px 0 3px; font-size: 20px; }
+
+.otel-section { padding: 20px; border-bottom: 1px solid rgb(203 213 225 / 50%); }
+.otel-subheading { margin-bottom: 14px; }
+.otel-subheading h3 { margin: 0; font-size: 15px; }
+
+.otel-architecture {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.otel-architecture-step { position: relative; min-width: 0; }
+.otel-architecture-step article {
+  display: flex;
+  height: 100%;
+  min-height: 120px;
+  flex-direction: column;
+  border: 1px solid rgb(147 197 253 / 70%);
+  border-radius: 10px;
+  padding: 13px;
+  background: linear-gradient(145deg, rgb(239 246 255 / 90%), rgb(238 242 255 / 70%));
+}
+.otel-architecture-step article > span { color: #2563eb; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.otel-architecture-step article > strong { margin: 5px 0; font-size: 13px; }
+.otel-architecture-step article > small { color: #64748b; font-size: 10px; line-height: 1.45; }
+.otel-architecture-step > i { position: absolute; top: 50%; right: -19px; color: #3b82f6; font-style: normal; }
+
+.otel-analytics {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 28px;
+  padding: 20px;
+  border-bottom: 1px solid rgb(203 213 225 / 50%);
+}
+.otel-analytics > div { min-width: 0; }
+
+.otel-timeline {
+  position: relative;
+  display: flex;
+  height: 145px;
+  align-items: flex-end;
+  gap: 4px;
+  border-bottom: 1px solid #cbd5e1;
+  padding-top: 12px;
+}
+.otel-timeline-column { position: relative; display: flex; height: 100%; flex: 1; align-items: flex-end; gap: 1px; }
+.otel-timeline-column i { display: block; min-width: 2px; flex: 1; border-radius: 2px 2px 0 0; }
+.otel-timeline-column i.trace,
+.otel-legend .trace::before { background: #6366f1; }
+.otel-timeline-column i.metric,
+.otel-legend .metric::before { background: #0ea5e9; }
+.otel-timeline-column i.log,
+.otel-legend .log::before { background: #14b8a6; }
+.otel-timeline-column b { position: absolute; top: 0; right: 0; width: 5px; height: 5px; border-radius: 50%; background: #ef4444; }
+.otel-legend { display: flex; gap: 14px; margin-top: 9px; color: #64748b; font-size: 10px; }
+.otel-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.otel-legend span::before { width: 7px; height: 7px; border-radius: 2px; content: ''; }
+
+.otel-card-grid { display: grid; gap: 12px; }
+.otel-card-grid.two-column { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.otel-card-grid.three-column { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.otel-concept-card,
+.otel-signal-card,
+.otel-propagator-card {
+  min-width: 0;
+  border: 1px solid rgb(203 213 225 / 65%);
+  border-radius: 10px;
+  padding: 14px;
+  background: rgb(255 255 255 / 45%);
+}
+.otel-concept-card > div,
+.otel-propagator-card > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.otel-concept-card > div span { color: #64748b; font-size: 11px; }
+.otel-concept-card > code,
+.otel-signal-card > code { display: block; overflow-x: auto; margin: 10px 0; border-radius: 6px; padding: 8px; color: #312e81; background: rgb(238 242 255 / 85%); font-size: 10px; white-space: nowrap; }
+.otel-concept-card p,
+.otel-signal-card p,
+.otel-propagator-card p { margin-bottom: 0; color: #64748b; font-size: 11px; line-height: 1.5; }
+
+.otel-instrumentation-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+.otel-instrumentation-grid > div { min-width: 0; }
+.otel-instrument-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; margin-top: 8px; border: 1px solid rgb(203 213 225 / 55%); border-radius: 8px; padding: 10px; background: rgb(255 255 255 / 40%); }
+.otel-instrument-row > div { display: flex; min-width: 0; flex-direction: column; }
+.otel-instrument-row strong { font-size: 12px; }
+.otel-instrument-row small { overflow: hidden; margin-top: 3px; color: #64748b; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.otel-enabled { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: #94a3b8; box-shadow: 0 0 0 3px rgb(148 163 184 / 15%); }
+.otel-enabled.active { background: #10b981; box-shadow: 0 0 0 3px rgb(16 185 129 / 15%); }
+
+.otel-resource-conventions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid rgb(203 213 225 / 50%); }
+.otel-resource-conventions .otel-section { min-width: 0; border-bottom: 0; }
+.otel-resource-conventions .otel-section:first-child { border-right: 1px solid rgb(203 213 225 / 50%); }
+.otel-definition-list { margin: 0; }
+.otel-definition-list > div { display: grid; grid-template-columns: minmax(155px, 0.8fr) minmax(0, 1.2fr); gap: 12px; border-bottom: 1px solid rgb(203 213 225 / 45%); padding: 10px 0; }
+.otel-definition-list > div:last-child { border-bottom: 0; }
+.otel-definition-list dt,
+.otel-definition-list dd { display: flex; min-width: 0; flex-direction: column; gap: 3px; margin: 0; }
+.otel-definition-list code { overflow-wrap: anywhere; color: #312e81; font-size: 10px; }
+.otel-definition-list small,
+.otel-definition-list dd span { color: #64748b; font-size: 9px; line-height: 1.4; }
+.otel-definition-list dd { overflow-wrap: anywhere; font-size: 11px; }
+
+.otel-signal-card { border-top-width: 3px; }
+.otel-signal-card.tracer { border-top-color: #6366f1; }
+.otel-signal-card.meter { border-top-color: #0ea5e9; }
+.otel-signal-card.logger { border-top-color: #14b8a6; }
+.otel-signal-card > span { color: #64748b; font-size: 10px; text-transform: uppercase; }
+.otel-signal-card h3 { margin: 4px 0 0; font-size: 16px; }
+.otel-signal-card > small { display: block; margin-top: 12px; color: #64748b; font-size: 10px; }
+
+.otel-propagators { border-bottom: 0; }
+.otel-propagation-flow { display: grid; grid-template-columns: auto auto minmax(180px, 1fr) auto auto; align-items: center; gap: 12px; margin: 14px 0; border-radius: 9px; padding: 12px; color: #475569; background: rgb(241 245 249 / 75%); font-size: 11px; text-align: center; }
+.otel-propagation-flow span { color: #2563eb; font-weight: 700; }
+.otel-propagation-flow code { overflow: hidden; border: 1px dashed #93c5fd; border-radius: 6px; padding: 8px; color: #312e81; text-overflow: ellipsis; white-space: nowrap; }
+.otel-propagator-card > div code { color: #312e81; font-size: 12px; font-weight: 700; }
+.otel-propagator-card > strong { display: block; margin-top: 9px; font-size: 11px; }
+
 .links {
   flex-wrap: wrap;
   gap: 18px;
@@ -1027,11 +1176,15 @@ button.span-row.selected { border-color: rgb(147 197 253 / 70%); transform: none
   .rules-grid,
   .promql-grid,
   .trace-analytics-grid,
+  .otel-analytics,
+  .otel-instrumentation-grid,
+  .otel-resource-conventions,
   .propagation-content,
   .trace-browser,
   .span-inspector,
   .concepts .concept-grid { grid-template-columns: 1fr; }
   .metric-summary,
+  .otel-summary,
   .prometheus-summary,
   .trace-summary,
   .propagation-summary { grid-template-columns: repeat(3, 1fr); }
@@ -1044,6 +1197,9 @@ button.span-row.selected { border-color: rgb(147 197 253 / 70%); transform: none
   .prometheus-concepts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .architecture-flow { grid-template-columns: 1fr; }
   .architecture-flow > span { transform: rotate(90deg); text-align: center; }
+  .otel-architecture { grid-template-columns: 1fr; }
+  .otel-architecture-step > i { position: static; display: block; margin: 4px 0 -20px; transform: rotate(90deg); text-align: center; }
+  .otel-resource-conventions .otel-section:first-child { border-right: 0; border-bottom: 1px solid rgb(203 213 225 / 50%); }
 }
 
 @media (max-width: 430px) {
@@ -1051,12 +1207,16 @@ button.span-row.selected { border-color: rgb(147 197 253 / 70%); transform: none
   .stats { grid-template-columns: 1fr; }
   .query-grid { grid-template-columns: 1fr; }
   .metric-summary,
+  .otel-summary,
   .prometheus-summary,
   .trace-summary,
   .propagation-summary,
   .prometheus-concepts { grid-template-columns: repeat(2, 1fr); }
   .transport-grid,
+  .otel-card-grid.two-column,
+  .otel-card-grid.three-column,
   .propagation-concepts { grid-template-columns: 1fr; }
+  .otel-propagation-flow { grid-template-columns: 1fr; }
   .traceparent-parts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tracing-heading-actions { align-items: flex-start; flex-direction: column; }
   .tracing-concepts { grid-template-columns: 1fr; }

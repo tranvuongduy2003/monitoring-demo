@@ -17,7 +17,7 @@ public sealed class MetricsDemoSeeder
         _logger = logger;
     }
 
-    public MetricsAnalyticsSnapshot Seed(int count, int windowMinutes = 60)
+    public MetricsAnalyticsSnapshot Seed(int count, int windowMinutes = 60, bool writeLog = true)
     {
         int sequence = Interlocked.Increment(ref _seedSequence);
         var random = new Random(20260927 + sequence);
@@ -33,9 +33,12 @@ public sealed class MetricsDemoSeeder
             _metrics.RecordOrderProcessed(duration, status, category, "seed", timestamp);
         }
 
-        _logger.LogInformation(
-            "Seeded {MetricObservationCount} metric observations for the metrics lab",
-            count);
+        if (writeLog)
+        {
+            _logger.LogInformation(
+                "Seeded {MetricObservationCount} metric observations for the metrics lab",
+                count);
+        }
 
         return _metrics.GetSnapshot(windowMinutes);
     }
@@ -58,6 +61,8 @@ public sealed class MetricsDemoSeeder
 public sealed class MetricsSeedService : BackgroundService
 {
     private const int StartupObservationCount = 240;
+    private const int ContinuousObservationCount = 4;
+    private static readonly TimeSpan SeedInterval = TimeSpan.FromSeconds(2);
     private readonly MetricsDemoSeeder _seeder;
 
     public MetricsSeedService(MetricsDemoSeeder seeder)
@@ -65,13 +70,21 @@ public sealed class MetricsSeedService : BackgroundService
         _seeder = seeder;
     }
 
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!stoppingToken.IsCancellationRequested)
+        if (stoppingToken.IsCancellationRequested)
         {
-            _seeder.Seed(StartupObservationCount);
+            return;
         }
 
-        return Task.CompletedTask;
+        _seeder.Seed(StartupObservationCount);
+
+        using var timer = new PeriodicTimer(SeedInterval);
+        while (await timer.WaitForNextTickAsync(stoppingToken))
+        {
+            // Counters must change between Prometheus scrapes for rate() and increase()
+            // examples to remain useful even when no one is using the orders API.
+            _seeder.Seed(ContinuousObservationCount, windowMinutes: 15, writeLog: false);
+        }
     }
 }

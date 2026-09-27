@@ -37,6 +37,31 @@ export interface PrometheusOverview {
   };
 }
 
+export interface PromQlFundamentals {
+  connected: boolean;
+  error: string | null;
+  checkedAt: string;
+  examples: PromQlExample[];
+}
+
+export interface PromQlExample {
+  key: string;
+  title: string;
+  query: string;
+  purpose: string;
+  conceptType: string;
+  unit: string;
+  resultType: string;
+  series: PromQlSeries[];
+}
+
+export interface PromQlSeries {
+  name: string;
+  labels: Record<string, string>;
+  latestValue: number;
+  points: Array<{ timestamp: string; value: number }>;
+}
+
 export interface PrometheusTarget {
   job: string;
   instance: string;

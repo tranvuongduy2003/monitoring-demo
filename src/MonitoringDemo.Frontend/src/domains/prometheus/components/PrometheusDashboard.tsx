@@ -1,11 +1,11 @@
 import type { usePrometheusDashboard } from '@/domains/prometheus/hooks/usePrometheusDashboard';
-import type { PrometheusOverview } from '@/domains/prometheus/types';
+import type { PrometheusOverview, PromQlExample, PromQlSeries } from '@/domains/prometheus/types';
 import { dateTime } from '@/shared/lib/formatters';
 
 type PrometheusDashboardModel = ReturnType<typeof usePrometheusDashboard>;
 
 export function PrometheusDashboard({ model }: { model: PrometheusDashboardModel }) {
-  const { overview, seeding, message, seedPrometheus } = model;
+  const { overview, fundamentals, seeding, message, seedPrometheus } = model;
   const data = overview.data;
   const recordingRules = data?.rules.filter((rule) => rule.kind === 'recording') ?? [];
   const alertingRules = data?.rules.filter((rule) => rule.kind === 'alerting') ?? [];
@@ -79,6 +79,25 @@ export function PrometheusDashboard({ model }: { model: PrometheusDashboardModel
         </div>
       </div>
 
+      <section className="promql-fundamentals" aria-labelledby="promql-fundamentals-heading">
+        <div className="subheading promql-heading">
+          <div>
+            <p className="eyebrow">Fundamental PromQL</p>
+            <h3 id="promql-fundamentals-heading">Live query catalog</h3>
+            <p className="muted">Each expression runs against Prometheus. Values and label sets update every 10 seconds.</p>
+          </div>
+          <span className={`pill ${fundamentals.data?.connected ? 'completed' : 'pending'}`}>
+            {fundamentals.data?.connected ? `${fundamentals.data.examples.length} queries live` : 'waiting for Prometheus'}
+          </span>
+        </div>
+        {fundamentals.error && <p className="error panel-notice" role="alert">The PromQL catalog could not be loaded. Automatic retry is active.</p>}
+        {fundamentals.data && !fundamentals.data.connected && <p className="error panel-notice" role="status">PromQL results are unavailable: {fundamentals.data.error}</p>}
+        <div className="promql-grid">
+          {fundamentals.data?.examples.map((example) => <PromQlCard example={example} key={example.key} />)}
+          {!fundamentals.data && <p className="muted">Loading metric selection, vectors, aggregations, functions, and modifiers...</p>}
+        </div>
+      </section>
+
       <div className="prometheus-table-section">
         <div className="subheading"><div><h3>Targets, jobs, and instances</h3><p className="muted">A job groups targets; every target endpoint becomes an instance label.</p></div></div>
         <div className="table-wrap">
@@ -121,6 +140,61 @@ export function PrometheusDashboard({ model }: { model: PrometheusDashboardModel
       </div>
     </section>
   );
+}
+
+function PromQlCard({ example }: { example: PromQlExample }) {
+  const visibleSeries = example.series.slice(0, 6);
+  const maximum = Math.max(0.000001, ...visibleSeries.map((series) => Math.abs(series.latestValue)));
+
+  return (
+    <article className="promql-card">
+      <div className="promql-card-title">
+        <h3>{example.title}</h3>
+        <div><span>{example.conceptType}</span><span>{example.resultType}</span></div>
+      </div>
+      <p>{example.purpose}</p>
+      <code>{example.query}</code>
+      <div className="promql-result" aria-label={`${example.title} live result`}>
+        {visibleSeries.map((series, index) => (
+          <PromQlSeriesResult
+            key={`${series.name}-${index}`}
+            series={series}
+            maximum={maximum}
+            unit={example.unit}
+          />
+        ))}
+        {example.series.length > visibleSeries.length && <small>+ {example.series.length - visibleSeries.length} more series</small>}
+        {example.series.length === 0 && <span className="promql-empty">No samples yet</span>}
+      </div>
+    </article>
+  );
+}
+
+function PromQlSeriesResult({ series, maximum, unit }: { series: PromQlSeries; maximum: number; unit: string }) {
+  const points = series.points.slice(-24);
+  const pointMaximum = Math.max(0.000001, ...points.map((point) => Math.abs(point.value)));
+
+  return (
+    <div className="promql-series" title={series.name}>
+      <div className="promql-series-label">
+        <span>{series.name}</span>
+        <strong>{formatPromQlValue(series.latestValue)} <small>{unit}</small></strong>
+      </div>
+      {points.length > 1 ? (
+        <div className="promql-samples" aria-label={`${points.length} samples`}>
+          {points.map((point) => <i key={point.timestamp} style={{ height: `${Math.max(4, Math.abs(point.value) / pointMaximum * 100)}%` }} />)}
+        </div>
+      ) : (
+        <div className="bar-track"><span style={{ width: `${Math.max(2, Math.abs(series.latestValue) / maximum * 100)}%` }} /></div>
+      )}
+    </div>
+  );
+}
+
+function formatPromQlValue(value: number): string {
+  if (Math.abs(value) >= 1_000) return value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  if (Math.abs(value) >= 10) return value.toFixed(1);
+  return value.toFixed(3);
 }
 
 function Summary({ label, value, detail }: { label: string; value: string | number; detail: string }) {

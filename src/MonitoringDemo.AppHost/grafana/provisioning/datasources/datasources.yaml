@@ -18,3 +18,22 @@ datasources:
     jsonData:
       maxLines: 1000
     editable: false
+  - name: Tempo
+    uid: tempo
+    type: tempo
+    access: proxy
+    url: $TEMPO_DATASOURCE_URL
+    jsonData:
+      httpMethod: GET
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: -2m
+        spanEndTimeShift: 2m
+        tags:
+          - key: service.name
+            value: service_name
+        filterByTraceID: true
+        filterBySpanID: true
+      nodeGraph:
+        enabled: true
+    editable: false

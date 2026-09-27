@@ -16,5 +16,10 @@ public static class PrometheusEndpoints
             int windowMinutes = Math.Clamp(minutes ?? 60, 5, 360);
             return Results.Ok(await prometheus.GetOverviewAsync(windowMinutes, cancellationToken));
         });
+
+        group.MapGet("/fundamentals", async (
+            PrometheusQueryService prometheus,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await prometheus.GetFundamentalsAsync(cancellationToken)));
     }
 }

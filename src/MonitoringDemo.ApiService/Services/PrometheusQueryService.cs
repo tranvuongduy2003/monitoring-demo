@@ -5,6 +5,24 @@ namespace MonitoringDemo.ApiService.Services;
 
 public sealed class PrometheusQueryService
 {
+    private static readonly PromQlDefinition[] FundamentalQueries =
+    [
+        new("metric-selection", "Metric selection", "orders_created_total", "Select every series with this metric name.", "instant vector", "orders"),
+        new("label-filtering", "Label filtering", "orders_created_total{order_status=\"Completed\",product_category=~\"Electronics|Software\"}", "Keep only completed Electronics or Software series using exact and regex matchers.", "instant vector", "orders"),
+        new("instant-vector", "Instant vector", "sum by (order_status) (orders_created_total)", "Evaluate one current sample per status at the selected time.", "instant vector", "orders"),
+        new("range-vector", "Range vector", "orders_created_total{traffic_source=\"seed\"}[5m]", "Return the raw samples from the last five minutes for each seeded series.", "range vector", "orders"),
+        new("sum", "sum", "sum(orders_created_total)", "Add the latest values across every order counter series.", "aggregation", "orders"),
+        new("avg", "avg", "avg(order_processing_duration_ms_sum / clamp_min(order_processing_duration_ms_count, 1))", "Average the per-series mean processing durations.", "aggregation", "ms"),
+        new("min", "min", "min(order_processing_duration_ms_sum / clamp_min(order_processing_duration_ms_count, 1))", "Find the smallest per-series mean processing duration.", "aggregation", "ms"),
+        new("max", "max", "max(order_processing_duration_ms_sum / clamp_min(order_processing_duration_ms_count, 1))", "Find the largest per-series mean processing duration.", "aggregation", "ms"),
+        new("count", "count", "count(orders_created_total)", "Count the series in the selected instant vector.", "aggregation", "series"),
+        new("rate", "rate", "sum by (order_status) (rate(orders_created_total[1m]))", "Estimate per-second counter growth over the last minute.", "range function", "orders/s"),
+        new("increase", "increase", "sum by (order_status) (increase(orders_created_total[5m]))", "Estimate the total counter increase over the last five minutes.", "range function", "orders"),
+        new("by", "by", "sum by (product_category) (rate(orders_created_total[5m]))", "Aggregate while retaining only the product_category label.", "aggregation modifier", "orders/s"),
+        new("without", "without", "sum without (instance, job) (rate(orders_created_total[5m]))", "Aggregate while dropping instance and job and retaining the other labels.", "aggregation modifier", "orders/s"),
+        new("histogram-quantile", "histogram_quantile", "histogram_quantile(0.95, sum by (le) (rate(order_processing_duration_ms_bucket[5m])))", "Estimate p95 latency from the histogram's cumulative buckets.", "histogram function", "ms")
+    ];
+
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
     private readonly ILogger<PrometheusQueryService> _logger;
@@ -67,6 +85,29 @@ public sealed class PrometheusQueryService
         {
             _logger.LogWarning(exception, "Prometheus learning overview is temporarily unavailable");
             return PrometheusOverview.Unavailable(_baseUrl, settings, exception.Message);
+        }
+    }
+
+    public async Task<PromQlFundamentals> GetFundamentalsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var queryTasks = FundamentalQueries.Select(definition =>
+                QueryExpressionAsync(definition, cancellationToken));
+            var examples = await Task.WhenAll(queryTasks);
+
+            return new PromQlFundamentals(
+                true,
+                null,
+                DateTimeOffset.UtcNow,
+                examples);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            _logger.LogWarning(exception, "PromQL fundamentals are temporarily unavailable");
+            return PromQlFundamentals.Unavailable(
+                exception.Message,
+                FundamentalQueries.Select(PromQlExample.Empty).ToArray());
         }
     }
 
@@ -178,6 +219,96 @@ public sealed class PrometheusQueryService
         if (!document.RootElement.TryGetProperty("result", out var results)) return 0;
         var first = results.EnumerateArray().FirstOrDefault();
         return first.ValueKind == JsonValueKind.Undefined ? 0 : ReadSampleValue(first, "value");
+    }
+
+    private async Task<PromQlExample> QueryExpressionAsync(
+        PromQlDefinition definition,
+        CancellationToken cancellationToken)
+    {
+        using var document = await GetDataAsync(
+            $"/api/v1/query?query={Uri.EscapeDataString(definition.Query)}",
+            cancellationToken);
+
+        string resultType = document.RootElement.String("resultType") ?? "unknown";
+        if (!document.RootElement.TryGetProperty("result", out var result))
+        {
+            return PromQlExample.Empty(definition);
+        }
+
+        var series = resultType switch
+        {
+            "vector" => ReadVectorSeries(result),
+            "matrix" => ReadMatrixSeries(result),
+            "scalar" => ReadScalarSeries(result),
+            _ => []
+        };
+
+        return new PromQlExample(
+            definition.Key,
+            definition.Title,
+            definition.Query,
+            definition.Purpose,
+            definition.ConceptType,
+            definition.Unit,
+            resultType,
+            series);
+    }
+
+    private static IReadOnlyList<PromQlSeries> ReadVectorSeries(JsonElement result) =>
+        result.EnumerateArray()
+            .Take(30)
+            .Select(item =>
+            {
+                var labels = ReadLabels(item, "metric");
+                var point = ReadPoint(item.GetProperty("value"));
+                return new PromQlSeries(FormatSeriesName(labels), labels, point.Value, [point]);
+            })
+            .ToArray();
+
+    private static IReadOnlyList<PromQlSeries> ReadMatrixSeries(JsonElement result) =>
+        result.EnumerateArray()
+            .Take(30)
+            .Select(item =>
+            {
+                var labels = ReadLabels(item, "metric");
+                var points = item.GetProperty("values")
+                    .EnumerateArray()
+                    .TakeLast(120)
+                    .Select(ReadPoint)
+                    .ToArray();
+                return new PromQlSeries(
+                    FormatSeriesName(labels),
+                    labels,
+                    points.LastOrDefault()?.Value ?? 0,
+                    points);
+            })
+            .ToArray();
+
+    private static IReadOnlyList<PromQlSeries> ReadScalarSeries(JsonElement result)
+    {
+        var point = ReadPoint(result);
+        return [new PromQlSeries("scalar", new Dictionary<string, string>(), point.Value, [point])];
+    }
+
+    private static PrometheusPoint ReadPoint(JsonElement sample) =>
+        new(
+            DateTimeOffset.FromUnixTimeMilliseconds((long)(sample[0].GetDouble() * 1_000)),
+            ParseDouble(sample[1].GetString()));
+
+    private static string FormatSeriesName(IReadOnlyDictionary<string, string> labels)
+    {
+        var identifyingLabels = labels
+            .Where(label => label.Key is not "__name__" and not "instance" and not "job")
+            .OrderBy(label => label.Key)
+            .Select(label => $"{label.Key}={label.Value}")
+            .ToArray();
+
+        if (identifyingLabels.Length > 0)
+        {
+            return string.Join(", ", identifyingLabels);
+        }
+
+        return labels.TryGetValue("__name__", out string? metricName) ? metricName : "result";
     }
 
     private async Task<IReadOnlyList<PrometheusPoint>> QueryRangeAsync(
@@ -335,3 +466,49 @@ public sealed record PrometheusAnalytics(
     IReadOnlyList<PrometheusPoint> Throughput);
 
 public sealed record PrometheusPoint(DateTimeOffset Timestamp, double Value);
+
+internal sealed record PromQlDefinition(
+    string Key,
+    string Title,
+    string Query,
+    string Purpose,
+    string ConceptType,
+    string Unit);
+
+public sealed record PromQlFundamentals(
+    bool Connected,
+    string? Error,
+    DateTimeOffset CheckedAt,
+    IReadOnlyList<PromQlExample> Examples)
+{
+    public static PromQlFundamentals Unavailable(string error, IReadOnlyList<PromQlExample> examples) =>
+        new(false, error, DateTimeOffset.UtcNow, examples);
+}
+
+public sealed record PromQlExample(
+    string Key,
+    string Title,
+    string Query,
+    string Purpose,
+    string ConceptType,
+    string Unit,
+    string ResultType,
+    IReadOnlyList<PromQlSeries> Series)
+{
+    internal static PromQlExample Empty(PromQlDefinition definition) =>
+        new(
+            definition.Key,
+            definition.Title,
+            definition.Query,
+            definition.Purpose,
+            definition.ConceptType,
+            definition.Unit,
+            "unavailable",
+            []);
+}
+
+public sealed record PromQlSeries(
+    string Name,
+    IReadOnlyDictionary<string, string> Labels,
+    double LatestValue,
+    IReadOnlyList<PrometheusPoint> Points);

@@ -21,6 +21,7 @@ export function DashboardPage() {
       orders.orders.refetch(),
       metrics.analytics.refetch(),
       prometheus.overview.refetch(),
+      prometheus.fundamentals.refetch(),
       logging.analytics.refetch(),
     ]);
   });

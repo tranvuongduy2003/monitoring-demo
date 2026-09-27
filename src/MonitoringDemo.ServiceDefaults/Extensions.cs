@@ -37,6 +37,10 @@ public static class Extensions
             builder.Configuration["LOKI_OTLP_ENDPOINT"],
             UriKind.Absolute,
             out var lokiOtlpEndpoint);
+        var hasTempoOtlpEndpoint = Uri.TryCreate(
+            builder.Configuration["TEMPO_OTLP_ENDPOINT"],
+            UriKind.Absolute,
+            out var tempoOtlpEndpoint);
 
         builder.Logging.Configure(options =>
         {
@@ -104,6 +108,15 @@ public static class Extensions
                 if (hasAspireOtlpEndpoint)
                 {
                     tracing.AddOtlpExporter();
+                }
+
+                if (hasTempoOtlpEndpoint && tempoOtlpEndpoint is not null)
+                {
+                    tracing.AddOtlpExporter("tempo", exporter =>
+                    {
+                        exporter.Endpoint = tempoOtlpEndpoint;
+                        exporter.Protocol = OtlpExportProtocol.HttpProtobuf;
+                    });
                 }
             });
 

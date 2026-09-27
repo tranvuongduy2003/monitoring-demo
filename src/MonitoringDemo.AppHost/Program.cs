@@ -19,6 +19,8 @@ var postgres = builder.AddPostgres(
 var monitoringdb = postgres.AddDatabase("monitoringdb", Get("POSTGRES_DATABASE", "monitoringdb"));
 
 var lokiPort = GetInt("LOKI_PORT", 3100);
+var tempoPort = GetInt("TEMPO_PORT", 3200);
+var tempoOtlpHttpPort = GetInt("TEMPO_OTLP_HTTP_PORT", 4318);
 var prometheusPort = GetInt("PROMETHEUS_PORT", 9090);
 var grafanaPort = GetInt("GRAFANA_PORT", 3000);
 var apiPort = GetInt("API_PORT", 5000);
@@ -26,7 +28,9 @@ var frontendPort = GetInt("FRONTEND_PORT", 5173);
 var apiMetricsTarget = $"{Get("PROMETHEUS_API_HOST", "host.docker.internal")}:{apiPort}";
 var defaultPrometheusDataSourceUrl = $"http://host.docker.internal:{prometheusPort}";
 var defaultLokiDataSourceUrl = $"http://host.docker.internal:{lokiPort}";
+var defaultTempoDataSourceUrl = $"http://host.docker.internal:{tempoPort}";
 var defaultLokiBaseUrl = $"http://localhost:{lokiPort}";
+var defaultTempoOtlpEndpoint = $"http://localhost:{tempoOtlpHttpPort}/v1/traces";
 var defaultFrontendUrl = $"http://localhost:{frontendPort}";
 var defaultApiUrl = $"http://localhost:{apiPort}";
 var defaultGrafanaUrl = $"http://localhost:{grafanaPort}";
@@ -38,6 +42,12 @@ var loki = builder.AddContainer("loki", "grafana/loki", Get("LOKI_IMAGE_TAG", "3
     .WithHttpEndpoint(port: lokiPort, targetPort: 3100, name: "http")
     .WithEnvironment("LOKI_RETENTION_PERIOD", Get("LOKI_RETENTION_PERIOD", "168h"))
     .WithArgs("-config.file=/etc/loki/loki-config.yaml", "-config.expand-env=true");
+
+var tempo = builder.AddContainer("tempo", "grafana/tempo", Get("TEMPO_IMAGE_TAG", "latest"))
+    .WithBindMount("tempo", "/etc/tempo", isReadOnly: true)
+    .WithHttpEndpoint(port: tempoPort, targetPort: 3200, name: "http")
+    .WithHttpEndpoint(port: tempoOtlpHttpPort, targetPort: 4318, name: "otlp-http")
+    .WithArgs("-config.file=/etc/tempo/tempo.yaml", "-config.expand-env=true");
 
 var prometheus = builder.AddContainer("prometheus", "prom/prometheus", Get("PROMETHEUS_IMAGE_TAG", "latest"))
     .WithBindMount("prometheus", "/etc/prometheus", isReadOnly: true)
@@ -66,12 +76,15 @@ var grafana = builder.AddContainer("grafana", "grafana/grafana", Get("GRAFANA_IM
     .WithEnvironment("GF_USERS_ALLOW_SIGN_UP", Get("GRAFANA_ALLOW_SIGN_UP", "false"))
     .WithEnvironment("PROMETHEUS_DATASOURCE_URL", Get("PROMETHEUS_DATASOURCE_URL", defaultPrometheusDataSourceUrl))
     .WithEnvironment("LOKI_DATASOURCE_URL", Get("LOKI_DATASOURCE_URL", defaultLokiDataSourceUrl))
+    .WithEnvironment("TEMPO_DATASOURCE_URL", Get("TEMPO_DATASOURCE_URL", defaultTempoDataSourceUrl))
     .WaitFor(prometheus)
-    .WaitFor(loki);
+    .WaitFor(loki)
+    .WaitFor(tempo);
 
 var apiService = builder.AddProject<Projects.MonitoringDemo_ApiService>("apiservice")
     .WithReference(monitoringdb)
     .WithEnvironment("LOKI_OTLP_ENDPOINT", Get("LOKI_OTLP_ENDPOINT", $"{defaultLokiBaseUrl}/otlp/v1/logs"))
+    .WithEnvironment("TEMPO_OTLP_ENDPOINT", Get("TEMPO_OTLP_ENDPOINT", defaultTempoOtlpEndpoint))
     .WithEnvironment("Loki__BaseUrl", Get("LOKI_BASE_URL", defaultLokiBaseUrl))
     .WithEnvironment("Prometheus__BaseUrl", Get("PROMETHEUS_BASE_URL", defaultPrometheusUrl))
     .WithEnvironment("Prometheus__Retention", Get("PROMETHEUS_RETENTION_TIME", "15d"))
@@ -81,6 +94,7 @@ var apiService = builder.AddProject<Projects.MonitoringDemo_ApiService>("apiserv
     .WithEnvironment("Cors__AllowedOrigins", Get("CORS_ALLOWED_ORIGINS", defaultFrontendUrl))
     .WaitFor(monitoringdb)
     .WaitFor(loki)
+    .WaitFor(tempo)
     .WithHttpEndpoint(port: apiPort);
 
 var frontend = builder.AddViteApp("frontend", "../MonitoringDemo.Frontend")

@@ -400,6 +400,90 @@ tbody tr:last-child td { border-bottom: 0; }
   border-bottom: 1px solid rgb(203 213 225 / 50%);
 }
 
+.promql-fundamentals {
+  border-bottom: 1px solid rgb(203 213 225 / 50%);
+}
+
+.promql-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 20px 0;
+}
+
+.promql-heading p { margin-bottom: 0; }
+
+.promql-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 20px;
+}
+
+.promql-card {
+  min-width: 0;
+  border: 1px solid rgb(203 213 225 / 65%);
+  border-radius: 10px;
+  padding: 14px;
+  background: rgb(255 255 255 / 48%);
+}
+
+.promql-card-title,
+.promql-card-title > div,
+.promql-series-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.promql-card-title h3 { margin: 0; }
+.promql-card-title > div { justify-content: flex-end; flex-wrap: wrap; }
+.promql-card-title span {
+  border-radius: 999px;
+  padding: 3px 7px;
+  color: #475569;
+  background: #f1f5f9;
+  font-size: 10px;
+}
+
+.promql-card > p { min-height: 39px; margin: 10px 0; color: #64748b; font-size: 12px; line-height: 1.55; }
+.promql-card > code {
+  display: block;
+  overflow-x: auto;
+  border-radius: 6px;
+  padding: 9px;
+  color: #312e81;
+  background: rgb(238 242 255 / 85%);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.promql-result { display: flex; flex-direction: column; gap: 9px; margin-top: 12px; }
+.promql-series { min-width: 0; }
+.promql-series-label { margin-bottom: 4px; font-size: 10px; }
+.promql-series-label > span { overflow: hidden; color: #64748b; text-overflow: ellipsis; white-space: nowrap; }
+.promql-series-label strong { flex-shrink: 0; color: #172033; }
+.promql-series-label small,
+.promql-result > small { color: #94a3b8; font-weight: 400; }
+.promql-empty { color: #94a3b8; font-size: 12px; }
+
+.promql-samples {
+  display: flex;
+  height: 28px;
+  align-items: flex-end;
+  gap: 2px;
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.promql-samples i {
+  min-width: 2px;
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(180deg, #14b8a6, #2563eb);
+}
+
 .prometheus-bars { position: relative; height: 135px; }
 .prometheus-bars .time-column span { background: linear-gradient(180deg, #f97316, #dc2626); }
 .chart-empty { position: absolute; inset: 50% 0 auto; margin: 0; color: #94a3b8; text-align: center; font-size: 12px; }
@@ -606,6 +690,7 @@ tbody tr:last-child td { border-bottom: 0; }
   .metrics-visuals,
   .prometheus-analytics,
   .rules-grid,
+  .promql-grid,
   .concepts .concept-grid { grid-template-columns: 1fr; }
   .metric-summary,
   .prometheus-summary { grid-template-columns: repeat(3, 1fr); }

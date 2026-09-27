@@ -4,7 +4,9 @@ using MonitoringDemo.ApiService.Middleware;
 using MonitoringDemo.ApiService.Observability;
 using MonitoringDemo.ApiService.Services;
 using MonitoringDemo.ApiService.Telemetry;
+using MonitoringDemo.ServiceDefaults;
 
+EnvironmentFile.LoadForProject("MonitoringDemo.ApiService");
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
@@ -21,13 +23,29 @@ builder.Services.AddHttpClient<LokiQueryService>();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", builder =>
-        builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+    string[] allowedOrigins = builder.Configuration
+        .GetValue<string>("Cors:AllowedOrigins")?
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        ?? ["*"];
+
+    options.AddPolicy("Frontend", policy =>
+    {
+        if (allowedOrigins.Contains("*"))
+        {
+            policy.AllowAnyOrigin();
+        }
+        else
+        {
+            policy.WithOrigins(allowedOrigins);
+        }
+
+        policy.AllowAnyMethod().AllowAnyHeader();
+    });
 });
 
 var app = builder.Build();
 
-app.UseCors("AllowAll");
+app.UseCors("Frontend");
 app.UseMiddleware<LogContextMiddleware>();
 app.MapDefaultEndpoints();
 

@@ -1,140 +1,138 @@
-# 📊 MonitoringDemo — End-to-End Observability with .NET Aspire
+# MonitoringDemo
 
-A monitoring demo featuring a **.NET Minimal API** backend with OpenTelemetry instrumentation, a React learning dashboard, **PostgreSQL**, and self-hosted **Prometheus**, **Loki**, and **Grafana** — all orchestrated by **Aspire 13** on **.NET 10**.
+An end-to-end observability demo built with .NET 10, Aspire, React, PostgreSQL, OpenTelemetry, Prometheus, Loki, and Grafana.
 
 ## Architecture
 
+```text
+Browser
+   │ HTTP
+   ▼
+┌────────────────────────── .NET Aspire AppHost ──────────────────────────┐
+│                                                                        │
+│  React + Vite :5173                                                    │
+│         │                                                              │
+│         │ /api proxy                                                   │
+│         ▼                                                              │
+│  .NET Minimal API :5000                                                │
+│         │                                                              │
+│         ├── SQL reads/writes ───────────────► PostgreSQL :5432          │
+│         │                                                              │
+│         ├── /metrics ◄── scrape ───────────── Prometheus :9090          │
+│         │                                             ▲                │
+│         │                                             │ PromQL         │
+│         │                                             │                │
+│         ├── OTLP structured logs ────────► Loki :3100 │                │
+│         ├── LogQL analytics queries ─────►     ▲       │                │
+│         │                                     │ LogQL │                │
+│         │                                     │       │                │
+│         │                               Grafana :3000 ─┘                │
+│         │                                                              │
+│         └── OTLP metrics and traces ───────► Aspire Dashboard :17225   │
+│                                                                        │
+│  API hosted services                                                   │
+│    ├── Background order simulator ────────► PostgreSQL + telemetry     │
+│    ├── Logging seed service ──────────────► Loki                       │
+│    └── Metrics seed service ──────────────► Prometheus endpoint data   │
+│                                                                        │
+│  AppHost loads environment settings, injects service references,       │
+│  waits for dependencies, and manages the complete local stack.         │
+└────────────────────────────────────────────────────────────────────────┘
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    .NET Aspire AppHost                       │
-│                    (Orchestrator)                            │
-│                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-│  │  PostgreSQL   │  │  Prometheus  │  │     Grafana      │   │
-│  │    :5432      │  │    :9090     │  │     :3000        │   │
-│  │  + pgAdmin    │  │  (scrapes)   │  │  (visualizes)    │   │
-│  └──────┬───────┘  └──────┬───────┘  └──────────────────┘   │
-│         │                 │                                  │
-│  ┌──────┴───────┐         │                                 │
-│  │  API Service  ├────────┘  /metrics                       │
-│  │  .NET 10      │                                          │
-│  │  :5000        │◄────── /api/* proxy                      │
-│  └──────────────┘         │                                 │
-│         ▲                 │                                 │
-│  ┌──────┴───────────────────┐                               │
-│  │  React Frontend          │                               │
-│  │  Vite                    │                               │
-│  │  :5173                   │                               │
-│  └──────────────────────────┘                               │
-└─────────────────────────────────────────────────────────────┘
-```
 
-## ✨ Features
+### Runtime flow
 
-- **OpenTelemetry Instrumentation** — Custom metrics (counters, histograms, gauges), structured logs, and distributed traces
-- **Background Order Simulator** — Generates realistic telemetry data every 2-5 seconds for demo purposes
-- **Self-Hosted Monitoring Stack** — Prometheus stores metrics, Loki stores OTLP logs, and Grafana auto-provisions both data sources and dashboards
-- **Correlated Logging Lab** — Structured attributes, scopes, log levels, exceptions, correlation/request IDs, and trace/span IDs
-- **Seeded Log Analytics** — Repeatable startup events across every log level plus ready-to-run LogQL queries
-- **Lean status page** — Live order statistics and recent activity, with detailed visualization left to Grafana
-- **Aspire Orchestration** — Single `dotnet run` starts everything: database, monitoring, API, and frontend
+| Area | Responsibility |
+|---|---|
+| **Aspire AppHost** | Loads DevOps environment settings, starts every resource, injects service references, performs dependency health checks, and exposes local endpoints. |
+| **React frontend** | Displays order, metric, and logging labs. Vite proxies `/api/*` requests to the API, so the browser does not need an internal service address. |
+| **API service** | Provides order/product endpoints, telemetry analytics, health checks, and the Prometheus `/metrics` endpoint. |
+| **Background services** | Continuously create sample orders, metrics, and structured logs so dashboards contain useful data immediately. |
+| **PostgreSQL** | Stores products and orders. Aspire injects the generated database connection string into the API. |
+| **Prometheus** | Pulls metrics from `/metrics`; Grafana reads them with PromQL. |
+| **Loki** | Receives structured application logs over OTLP and serves LogQL queries to both the API and Grafana. |
+| **Grafana** | Uses provisioned Prometheus and Loki data sources plus repository-managed dashboards. |
+| **Aspire Dashboard** | Displays resource state, distributed traces, metrics, and diagnostic information during local development. |
 
-## Prerequisites
+Telemetry is correlated through request, correlation, trace, and span identifiers. Environment variables control public ports, container versions, credentials, retention, scrape intervals, and service URLs.
 
-| Tool | Version | Notes |
-|------|---------|-------|
-| **.NET SDK** | 10.0+ | [Download](https://dotnet.microsoft.com/download/dotnet/10.0) |
-| **Node.js** | 20+ | [Download](https://nodejs.org/) |
-| **Docker Desktop** | Latest | Must be running for PostgreSQL, Prometheus, Grafana |
+## Features
 
-## 🚀 Quick Start
+- Custom OpenTelemetry counters, gauges, histograms, traces, and structured logs
+- Correlation, request, trace, and span IDs across application logs
+- Prometheus metric scraping and Loki OTLP log storage
+- Provisioned Grafana data sources and dashboards
+- Background order simulation and repeatable telemetry seed endpoints
+- React dashboard with order, metric, logging, and LogQL learning views
+- Domain-oriented frontend with strict `@/` absolute imports
+- Environment-driven local and DevOps configuration
 
-```bash
-# 1. Clone and navigate
-cd monitoring-demo
+## Requirements
 
-# 2. Install frontend dependencies
-cd src/MonitoringDemo.Frontend
+- .NET SDK 10+
+- Node.js 20+
+- Docker Desktop
+
+## Quick start
+
+```powershell
+Copy-Item src/MonitoringDemo.AppHost/.env.example src/MonitoringDemo.AppHost/.env
+
+Push-Location src/MonitoringDemo.Frontend
 npm install
-cd ../..
+Pop-Location
 
-# 3. Run the entire stack via Aspire
 dotnet run --project src/MonitoringDemo.AppHost
 ```
 
-### Run from JetBrains Rider
-
-1. Start Docker Desktop.
-2. Open `MonitoringDemo.slnx` and let Rider restore the solution.
-3. Select the shared **Aspire** run configuration in the toolbar.
-4. Run or debug it. The Aspire dashboard opens at `https://localhost:17225`.
-
-The profile uses the .NET SDK selected by `global.json` and the Aspire CLI version
-paired with the AppHost SDK, so a separately installed global Aspire CLI is not required.
-
-Aspire will automatically:
-- Start PostgreSQL and seed demo data
-- Launch Prometheus (scraping API metrics)
-- Launch Loki (receiving OpenTelemetry logs)
-- Launch Grafana (pre-provisioned dashboards)
-- Start the .NET API with OpenTelemetry
-- Start the React dev server
-
-## 🔗 Service URLs
+## Local services
 
 | Service | URL | Credentials |
-|---------|-----|-------------|
-| **Aspire Dashboard** | `https://localhost:17225` | — |
-| **React Frontend** | `http://localhost:5173` | — |
-| **API Service** | `http://localhost:5000` | — |
-| **API Metrics** | `http://localhost:5000/metrics` | — |
-| **Prometheus** | `http://localhost:9090` | — |
-| **Loki API** | `http://localhost:3100/ready` | — |
-| **Grafana** | `http://localhost:3000` | admin / admin |
-| **pgAdmin** | Via Aspire Dashboard link | — |
+|---|---|---|
+| Frontend | `http://localhost:5173` | — |
+| API | `http://localhost:5000` | — |
+| API metrics | `http://localhost:5000/metrics` | — |
+| Prometheus | `http://localhost:9090` | — |
+| Loki | `http://localhost:3100/ready` | — |
+| Grafana | `http://localhost:3000` | `admin` / configured password |
+| Aspire dashboard | `https://localhost:17225` | Launch token |
 
-## 📈 API Endpoints
+Ports and credentials can be changed in the AppHost `.env` file.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/products` | List all products |
-| `GET` | `/api/products/{id}` | Get product by ID |
-| `GET` | `/api/orders?limit=20` | Recent orders |
-| `POST` | `/api/orders` | Create order `{productId, quantity}` |
-| `GET` | `/api/orders/stats` | Dashboard statistics |
-| `GET` | `/api/metrics/analytics?minutes=60` | Rolling buckets, count/sum, percentiles, time series, and cardinality |
-| `POST` | `/api/metrics/seed?count=120` | Seed synthetic metric observations for repeatable testing |
-| `GET` | `/api/logging/analytics?minutes=60` | Live Loki volume by level and query catalog |
-| `POST` | `/api/logging/demo?level=Warning&includeException=true` | Emit a correlated teaching event |
-| `GET` | `/metrics` | Prometheus metrics |
-| `GET` | `/health` | Health check |
+## Environment files
 
-## 🔭 Custom Telemetry
+Local `.env` files are ignored by Git. Committed templates document every supported setting:
 
-### Metrics (Prometheus)
-- `orders_created_total` — Counter of processed orders (labels: status, category, traffic source)
-- `orders_failed_total` — Counter of failed orders with the same bounded labels
-- `order_processing_duration_ms` — Histogram with explicit 50/100/200/500/1000/2000 ms buckets, count, and sum
-- `active_orders` — Observable gauge of in-flight orders
+| Layer | Template |
+|---|---|
+| Frontend | `src/MonitoringDemo.Frontend/.env.example` |
+| API standalone mode | `src/MonitoringDemo.ApiService/.env.example` |
+| Aspire and DevOps | `src/MonitoringDemo.AppHost/.env.example` |
 
-### Traces
-- `MonitoringDemo.ApiService` — Custom activity source for business operations
-- Auto-instrumented: ASP.NET Core, HTTP client, EF Core
+Shell, IDE, CI, and deployment environment variables take precedence over `.env` values.
 
-### Logs
+## Project structure
 
-- Source-generated logging methods centralize message templates, levels, and stable event IDs
-- Typed application scopes standardize `event_name`, correlation/request IDs, trace/span IDs, and business fields
-- Event ID ranges separate HTTP (`1000`), seed/demo (`2000-3000`), orders (`4000`), workers (`5000`), dependencies (`6000`), and host lifecycle (`9000`)
-- HTTP completion logs use status-aware levels: information for success, warning for 4xx, and error for 5xx
-- Exception records retain stack traces and structured context
-- Exported via OpenTelemetry to both Aspire Dashboard and Loki
-- Queried with LogQL in the provisioned `MonitoringDemo - Logs & Correlation` Grafana dashboard
+```text
+src/
+├── MonitoringDemo.AppHost/          Aspire and monitoring infrastructure
+├── MonitoringDemo.ApiService/       API, data, telemetry, and background jobs
+├── MonitoringDemo.Frontend/         React dashboard
+│   └── src/
+│       ├── app/                      Application entry
+│       ├── pages/                    Page composition
+│       ├── domains/                  Orders, metrics, and logging
+│       └── shared/                   Reusable UI, hooks, and services
+└── MonitoringDemo.ServiceDefaults/  Health checks and OpenTelemetry defaults
+```
 
-## 🎨 Frontend
+## Validation
 
-The frontend intentionally stays small: it shows API-backed order statistics, recent orders, a test-order action, and links to the dedicated monitoring tools. Grafana remains the place for detailed charts and telemetry analysis.
+```powershell
+dotnet build MonitoringDemo.slnx
+npm --prefix src/MonitoringDemo.Frontend run build
+```
 
 ## License
 
-This project is for demonstration purposes.
+For demonstration and learning purposes.

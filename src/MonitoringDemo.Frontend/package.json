@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "check:imports": "node scripts/check-absolute-imports.mjs",
+    "build": "npm run check:imports && tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

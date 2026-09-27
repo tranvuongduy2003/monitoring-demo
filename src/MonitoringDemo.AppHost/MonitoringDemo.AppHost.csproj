@@ -13,5 +13,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MonitoringDemo.ApiService\MonitoringDemo.ApiService.csproj" />
+    <ProjectReference Include="..\MonitoringDemo.ServiceDefaults\MonitoringDemo.ServiceDefaults.csproj" IsAspireProjectResource="false" />
   </ItemGroup>
 </Project>

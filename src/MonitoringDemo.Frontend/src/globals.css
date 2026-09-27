@@ -143,6 +143,7 @@ h3 { margin: 0 0 10px; font-size: 14px; }
 
 .notice { color: #065f46; background: rgb(236 253 245 / 72%); }
 .error { color: #991b1b; background: rgb(254 242 242 / 75%); }
+.panel-notice { margin: 12px 20px; }
 
 .stats {
   display: grid;

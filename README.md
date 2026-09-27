@@ -61,8 +61,10 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 - Custom OpenTelemetry counters, gauges, histograms, traces, and structured logs
 - Correlation, request, trace, and span IDs across application logs
 - Prometheus metric scraping and Loki OTLP log storage
+- Live Prometheus architecture lab covering pull collection, scrape intervals, targets, jobs, instances, exporters, service discovery, TSDB retention, and rules
 - Provisioned Grafana data sources and dashboards
 - Background order simulation and repeatable telemetry seed endpoints
+- File-based target discovery plus provisioned recording and alerting rules
 - React dashboard with order, metric, logging, and LogQL learning views
 - Domain-oriented frontend with strict `@/` absolute imports
 - Environment-driven local and DevOps configuration

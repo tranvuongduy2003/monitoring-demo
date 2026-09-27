@@ -1,0 +1,10 @@
+[
+  {
+    "targets": ["__API_METRICS_TARGET__"],
+    "labels": {
+      "application": "MonitoringDemo.ApiService",
+      "environment": "development",
+      "discovery": "file_sd"
+    }
+  }
+]

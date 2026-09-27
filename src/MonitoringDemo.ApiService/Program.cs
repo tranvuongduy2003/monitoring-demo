@@ -20,6 +20,7 @@ builder.Services.AddHostedService<BackgroundOrderSimulator>();
 builder.Services.AddHostedService<LoggingSeedService>();
 builder.Services.AddHostedService<MetricsSeedService>();
 builder.Services.AddHttpClient<LokiQueryService>();
+builder.Services.AddHttpClient<PrometheusQueryService>();
 
 builder.Services.AddCors(options =>
 {
@@ -53,6 +54,8 @@ app.MapProductEndpoints();
 app.MapOrderEndpoints();
 app.MapLoggingEndpoints();
 app.MapMetricsEndpoints();
+app.MapPrometheusEndpoints();
+app.MapDemoEndpoints();
 
 try 
 {

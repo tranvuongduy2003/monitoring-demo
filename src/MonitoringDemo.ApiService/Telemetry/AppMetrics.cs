@@ -15,6 +15,7 @@ public sealed class AppMetrics
     private readonly Histogram<double> _orderProcessingDuration;
     private readonly ConcurrentQueue<OrderMetricSample> _samples = new();
     private readonly ConcurrentDictionary<MetricLabelSet, byte> _labelSets = new();
+    private readonly object _analyticsLock = new();
     private long _ordersCreatedValue;
     private long _ordersFailedValue;
     private int _activeOrders;
@@ -63,26 +64,45 @@ public sealed class AppMetrics
 
         _ordersCreated.Add(1, tags);
         _orderProcessingDuration.Record(durationMilliseconds, tags);
-        Interlocked.Increment(ref _ordersCreatedValue);
 
         if (string.Equals(status, "Failed", StringComparison.OrdinalIgnoreCase))
         {
             _ordersFailed.Add(1, tags);
-            Interlocked.Increment(ref _ordersFailedValue);
         }
 
-        _labelSets.TryAdd(new MetricLabelSet(status, category, source), 0);
-        _samples.Enqueue(new OrderMetricSample(
-            observedAt ?? DateTimeOffset.UtcNow,
-            durationMilliseconds,
-            status,
-            category,
-            source));
-
-        int count = Interlocked.Increment(ref _sampleCount);
-        while (count > MaximumRetainedSamples && _samples.TryDequeue(out _))
+        lock (_analyticsLock)
         {
-            count = Interlocked.Decrement(ref _sampleCount);
+            Interlocked.Increment(ref _ordersCreatedValue);
+            if (string.Equals(status, "Failed", StringComparison.OrdinalIgnoreCase))
+            {
+                Interlocked.Increment(ref _ordersFailedValue);
+            }
+
+            _labelSets.TryAdd(new MetricLabelSet(status, category, source), 0);
+            _samples.Enqueue(new OrderMetricSample(
+                observedAt ?? DateTimeOffset.UtcNow,
+                durationMilliseconds,
+                status,
+                category,
+                source));
+
+            int count = Interlocked.Increment(ref _sampleCount);
+            while (count > MaximumRetainedSamples && _samples.TryDequeue(out _))
+            {
+                count = Interlocked.Decrement(ref _sampleCount);
+            }
+        }
+    }
+
+    public void ResetAnalytics()
+    {
+        lock (_analyticsLock)
+        {
+            _samples.Clear();
+            _labelSets.Clear();
+            Interlocked.Exchange(ref _sampleCount, 0);
+            Interlocked.Exchange(ref _ordersCreatedValue, 0);
+            Interlocked.Exchange(ref _ordersFailedValue, 0);
         }
     }
 
@@ -90,10 +110,27 @@ public sealed class AppMetrics
     {
         var now = DateTimeOffset.UtcNow;
         var from = now.AddMinutes(-windowMinutes);
-        var samples = _samples
-            .Where(sample => sample.Timestamp >= from && sample.Timestamp <= now)
-            .OrderBy(sample => sample.Timestamp)
-            .ToArray();
+        OrderMetricSample[] samples;
+        MetricSeries[] series;
+        long ordersCreated;
+        long ordersFailed;
+
+        lock (_analyticsLock)
+        {
+            samples = _samples
+                .Where(sample => sample.Timestamp >= from && sample.Timestamp <= now)
+                .OrderBy(sample => sample.Timestamp)
+                .ToArray();
+            series = _labelSets.Keys
+                .OrderBy(item => item.Status)
+                .ThenBy(item => item.Category)
+                .ThenBy(item => item.Source)
+                .Select(item => new MetricSeries(item.Status, item.Category, item.Source))
+                .ToArray();
+            ordersCreated = Interlocked.Read(ref _ordersCreatedValue);
+            ordersFailed = Interlocked.Read(ref _ordersFailedValue);
+        }
+
         var durations = samples.Select(sample => sample.DurationMilliseconds).Order().ToArray();
 
         var buckets = DurationBucketBoundaries
@@ -117,19 +154,12 @@ public sealed class AppMetrics
                 Math.Round(group.Average(sample => sample.DurationMilliseconds), 2)))
             .ToArray();
 
-        var series = _labelSets.Keys
-            .OrderBy(item => item.Status)
-            .ThenBy(item => item.Category)
-            .ThenBy(item => item.Source)
-            .Select(item => new MetricSeries(item.Status, item.Category, item.Source))
-            .ToArray();
-
         return new MetricsAnalyticsSnapshot(
             windowMinutes,
             from,
             now,
-            Interlocked.Read(ref _ordersCreatedValue),
-            Interlocked.Read(ref _ordersFailedValue),
+            ordersCreated,
+            ordersFailed,
             Volatile.Read(ref _activeOrders),
             new MetricSummary(
                 durations.Length,

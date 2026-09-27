@@ -14,6 +14,10 @@ export async function post(url: string, options: Omit<RequestInit, 'method'> = {
   ensureSuccessful(response);
 }
 
+export async function deleteJson<T>(url: string): Promise<T> {
+  return requestJson<T>(url, { method: 'DELETE' });
+}
+
 async function requestJson<T>(url: string, options: RequestInit): Promise<T> {
   const response = await fetch(url, options);
   ensureSuccessful(response);

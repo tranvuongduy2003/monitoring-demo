@@ -89,8 +89,35 @@
         { "refId": "A", "expr": "process_runtime_dotnet_gc_heap_size_bytes", "legendFormat": "GC heap" },
         { "refId": "B", "expr": "process_runtime_dotnet_thread_pool_threads_count", "legendFormat": "thread-pool threads" }
       ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Recording rule - order throughput",
+      "description": "This query reads a precomputed series evaluated every 15 seconds instead of repeating the source aggregation.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 34 },
+      "targets": [{ "refId": "A", "expr": "job:orders_created:rate5m", "legendFormat": "{{job}}" }],
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] }
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Firing Prometheus alerts",
+      "description": "Alerting rules become ALERTS time series while pending or firing.",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 34 },
+      "targets": [{ "refId": "A", "expr": "count(ALERTS{alertstate=\"firing\"}) or vector(0)" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" }
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Scrape targets up",
+      "description": "The built-in up metric is 1 when the latest target scrape succeeded and 0 when it failed.",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 34 },
+      "targets": [{ "refId": "A", "expr": "sum(up)" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" }
     }
   ],
   "schemaVersion": 39,
-  "version": 2
+  "version": 3
 }

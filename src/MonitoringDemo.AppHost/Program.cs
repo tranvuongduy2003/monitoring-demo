@@ -52,8 +52,9 @@ var prometheus = builder.AddContainer("prometheus", "prom/prometheus", Get("PROM
         "sed -e \"s|__SCRAPE_INTERVAL__|${PROMETHEUS_SCRAPE_INTERVAL}|g\" " +
         "-e \"s|__EVALUATION_INTERVAL__|${PROMETHEUS_EVALUATION_INTERVAL}|g\" " +
         "-e \"s|__API_SCRAPE_INTERVAL__|${PROMETHEUS_API_SCRAPE_INTERVAL}|g\" " +
-        "-e \"s|__API_METRICS_TARGET__|${API_METRICS_TARGET}|g\" " +
         "/etc/prometheus/prometheus.yml > /tmp/prometheus.yml && " +
+        "sed -e \"s|__API_METRICS_TARGET__|${API_METRICS_TARGET}|g\" " +
+        "/etc/prometheus/targets/apiservice.json > /tmp/apiservice-targets.json && " +
         $"exec /bin/prometheus --config.file=/tmp/prometheus.yml {prometheusRetentionArgument}");
 
 var grafana = builder.AddContainer("grafana", "grafana/grafana", Get("GRAFANA_IMAGE_TAG", "latest"))
@@ -72,6 +73,11 @@ var apiService = builder.AddProject<Projects.MonitoringDemo_ApiService>("apiserv
     .WithReference(monitoringdb)
     .WithEnvironment("LOKI_OTLP_ENDPOINT", Get("LOKI_OTLP_ENDPOINT", $"{defaultLokiBaseUrl}/otlp/v1/logs"))
     .WithEnvironment("Loki__BaseUrl", Get("LOKI_BASE_URL", defaultLokiBaseUrl))
+    .WithEnvironment("Prometheus__BaseUrl", Get("PROMETHEUS_BASE_URL", defaultPrometheusUrl))
+    .WithEnvironment("Prometheus__Retention", Get("PROMETHEUS_RETENTION_TIME", "15d"))
+    .WithEnvironment("Prometheus__ScrapeInterval", Get("PROMETHEUS_SCRAPE_INTERVAL", "15s"))
+    .WithEnvironment("Prometheus__ApiScrapeInterval", Get("PROMETHEUS_API_SCRAPE_INTERVAL", "5s"))
+    .WithEnvironment("Prometheus__EvaluationInterval", Get("PROMETHEUS_EVALUATION_INTERVAL", "15s"))
     .WithEnvironment("Cors__AllowedOrigins", Get("CORS_ALLOWED_ORIGINS", defaultFrontendUrl))
     .WaitFor(monitoringdb)
     .WaitFor(loki)

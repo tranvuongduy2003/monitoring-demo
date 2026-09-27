@@ -1,0 +1,48 @@
+groups:
+  - name: monitoring-demo-recording
+    interval: 15s
+    rules:
+      - record: job:orders_created:rate5m
+        expr: sum by (job) (rate(orders_created_total[5m]))
+        labels:
+          workload: orders
+
+      - record: job:order_failure_ratio:rate5m
+        expr: sum by (job) (rate(orders_failed_total[5m])) / clamp_min(sum by (job) (rate(orders_created_total[5m])), 0.001)
+        labels:
+          workload: orders
+
+      - record: job:order_processing_duration_ms:p95_5m
+        expr: histogram_quantile(0.95, sum by (job, le) (rate(order_processing_duration_ms_bucket[5m])))
+        labels:
+          workload: orders
+
+  - name: monitoring-demo-alerting
+    interval: 15s
+    rules:
+      - alert: ApiServiceTargetDown
+        expr: up{job="apiservice"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: API metrics target is unavailable
+          description: Prometheus has been unable to scrape {{ $labels.instance }} for one minute.
+
+      - alert: HighOrderFailureRatio
+        expr: job:order_failure_ratio:rate5m{job="apiservice"} > 0.20
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Order failure ratio is above 20%
+          description: The five-minute order failure ratio is {{ $value | humanizePercentage }}.
+
+      - alert: HighOrderProcessingLatency
+        expr: job:order_processing_duration_ms:p95_5m{job="apiservice"} > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Order p95 processing latency is high
+          description: The five-minute p95 order latency is {{ $value }} ms.

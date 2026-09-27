@@ -40,6 +40,8 @@ public sealed class MetricsDemoSeeder
         return _metrics.GetSnapshot(windowMinutes);
     }
 
+    public void Reset() => Interlocked.Exchange(ref _seedSequence, 0);
+
     private static double CreateDuration(Random random)
     {
         double roll = random.NextDouble();

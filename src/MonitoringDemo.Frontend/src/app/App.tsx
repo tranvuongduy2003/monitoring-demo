@@ -4,6 +4,7 @@ import { LearnPage } from '@/pages/LearnPage';
 import { LogsPage } from '@/pages/LogsPage';
 import { MetricsPage } from '@/pages/MetricsPage';
 import { OpenTelemetryPage } from '@/pages/OpenTelemetryPage';
+import { OtlpPage } from '@/pages/OtlpPage';
 import { OrdersPage } from '@/pages/OrdersPage';
 import { OverviewPage } from '@/pages/OverviewPage';
 import { PrometheusPage } from '@/pages/PrometheusPage';
@@ -13,6 +14,7 @@ const pages: Record<AppRoute, { title: string; content: ReactNode }> = {
   overview: { title: 'Overview', content: <OverviewPage /> },
   orders: { title: 'Orders', content: <OrdersPage /> },
   opentelemetry: { title: 'OpenTelemetry', content: <OpenTelemetryPage /> },
+  otlp: { title: 'OTLP', content: <OtlpPage /> },
   metrics: { title: 'Metrics', content: <MetricsPage /> },
   prometheus: { title: 'Prometheus', content: <PrometheusPage /> },
   logs: { title: 'Logs', content: <LogsPage /> },

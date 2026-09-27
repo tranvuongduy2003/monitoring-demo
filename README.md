@@ -62,6 +62,8 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 - Custom OpenTelemetry counters, gauges, histograms, traces, and structured logs
 - Dedicated OpenTelemetry architecture lab covering the API, SDK, automatic and manual instrumentation, resources, semantic conventions, Tracer, Meter, Logger, and W3C propagators
 - Repeatable multi-signal OpenTelemetry seeding with an in-process timeline, per-operation analytics, error counts, and latency statistics
+- Dedicated OTLP transport lab covering OTLP, OTLP/gRPC, OTLP/HTTP, signal paths, ports, endpoint precedence, and live non-secret configuration
+- Repeatable OTLP batch seeding with protocol and signal breakdowns, payload compression, retry/failure counts, latency percentiles, and recent export visualization
 - Correlation, request, trace, and span IDs across application logs
 - Prometheus metric scraping and Loki OTLP log storage
 - Live Prometheus architecture lab covering pull collection, scrape intervals, targets, jobs, instances, exporters, service discovery, TSDB retention, and rules
@@ -71,7 +73,7 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 - Provisioned Grafana data sources and dashboards
 - Background order simulation, repeatable metric/trace seed endpoints, startup trace scenarios, and continuous bounded metric seeding so every visualization has test data
 - File-based target discovery plus provisioned recording and alerting rules
-- React workspace with focused pages for orders, OpenTelemetry, metrics, Prometheus, logs, traces, and learning resources
+- React workspace with focused pages for orders, OpenTelemetry, OTLP, metrics, Prometheus, logs, traces, and learning resources
 - Responsive application shell with persistent desktop navigation and a mobile sidebar
 - Domain-oriented frontend with strict `@/` absolute imports
 - Environment-driven local and DevOps configuration
@@ -108,6 +110,7 @@ dotnet run --project src/MonitoringDemo.AppHost
 | Aspire dashboard | `https://localhost:17225` | Launch token |
 
 Ports and credentials can be changed in the AppHost `.env` file.
+Tempo also exposes its standard OTLP receivers on port `4317` for gRPC and `4318` for HTTP/protobuf.
 
 ## Environment files
 

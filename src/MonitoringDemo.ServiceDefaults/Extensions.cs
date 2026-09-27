@@ -39,6 +39,13 @@ public static class Extensions
         Activity.ForceDefaultIdFormat = true;
         var hasAspireOtlpEndpoint =
             !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+        var hasSignalOtlpLogsEndpoint =
+            !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"]);
+        var hasStandardOtlpLogsEndpoint = hasAspireOtlpEndpoint || hasSignalOtlpLogsEndpoint;
+        var hasStandardOtlpMetricsEndpoint = hasAspireOtlpEndpoint ||
+            !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"]);
+        var hasStandardOtlpTracesEndpoint = hasAspireOtlpEndpoint ||
+            !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"]);
         var hasLokiOtlpEndpoint = Uri.TryCreate(
             builder.Configuration["LOKI_OTLP_ENDPOINT"],
             UriKind.Absolute,
@@ -71,7 +78,7 @@ public static class Extensions
                     exporter.Protocol = OtlpExportProtocol.HttpProtobuf;
                 });
             }
-            else if (hasAspireOtlpEndpoint)
+            if (hasSignalOtlpLogsEndpoint || (!hasLokiOtlpEndpoint && hasStandardOtlpLogsEndpoint))
             {
                 logging.AddOtlpExporter();
             }
@@ -103,7 +110,7 @@ public static class Extensions
                         })
                     .AddPrometheusExporter();
 
-                if (hasAspireOtlpEndpoint)
+                if (hasStandardOtlpMetricsEndpoint)
                 {
                     metrics.AddOtlpExporter();
                 }
@@ -114,7 +121,7 @@ public static class Extensions
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation();
 
-                if (hasAspireOtlpEndpoint)
+                if (hasStandardOtlpTracesEndpoint)
                 {
                     tracing.AddOtlpExporter();
                 }

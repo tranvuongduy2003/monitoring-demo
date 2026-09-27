@@ -20,6 +20,7 @@ var monitoringdb = postgres.AddDatabase("monitoringdb", Get("POSTGRES_DATABASE",
 
 var lokiPort = GetInt("LOKI_PORT", 3100);
 var tempoPort = GetInt("TEMPO_PORT", 3200);
+var tempoOtlpGrpcPort = GetInt("TEMPO_OTLP_GRPC_PORT", 4317);
 var tempoOtlpHttpPort = GetInt("TEMPO_OTLP_HTTP_PORT", 4318);
 var prometheusPort = GetInt("PROMETHEUS_PORT", 9090);
 var grafanaPort = GetInt("GRAFANA_PORT", 3000);
@@ -47,6 +48,7 @@ var loki = builder.AddContainer("loki", "grafana/loki", Get("LOKI_IMAGE_TAG", "3
 var tempo = builder.AddContainer("tempo", "grafana/tempo", Get("TEMPO_IMAGE_TAG", "latest"))
     .WithBindMount("tempo", "/etc/tempo", isReadOnly: true)
     .WithHttpEndpoint(port: tempoPort, targetPort: 3200, name: "http")
+    .WithHttpEndpoint(port: tempoOtlpGrpcPort, targetPort: 4317, name: "otlp-grpc")
     .WithHttpEndpoint(port: tempoOtlpHttpPort, targetPort: 4318, name: "otlp-http")
     .WithArgs("-config.file=/etc/tempo/tempo.yaml", "-config.expand-env=true");
 

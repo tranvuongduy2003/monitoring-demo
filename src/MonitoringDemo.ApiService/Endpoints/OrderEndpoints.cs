@@ -2,19 +2,25 @@ using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using MonitoringDemo.ApiService.Data;
 using MonitoringDemo.ApiService.Models;
+using MonitoringDemo.ApiService.Observability;
 using MonitoringDemo.ApiService.Telemetry;
 
 namespace MonitoringDemo.ApiService.Endpoints;
 
 public static class OrderEndpoints
 {
+    private const int DefaultOrderLimit = 20;
+    private const int MinimumOrderQuantity = 1;
+    private const int MaximumOrderQuantity = 100;
+    private const double OrderFailureProbability = 0.05;
+
     public static void MapOrderEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/orders");
 
         group.MapGet("/", async (AppDbContext dbContext, int? limit) =>
         {
-            int take = limit ?? 20;
+            int take = limit ?? DefaultOrderLimit;
             var orders = await dbContext.Orders
                 .Include(o => o.Product)
                 .OrderByDescending(o => o.CreatedAt)
@@ -28,37 +34,37 @@ public static class OrderEndpoints
             using var activity = activitySource.Source.StartActivity("CreateOrder");
             var sw = Stopwatch.StartNew();
 
-            if (req.Quantity is < 1 or > 100)
+            if (req.Quantity is < MinimumOrderQuantity or > MaximumOrderQuantity)
             {
-                logger.LogWarning(
-                    new EventId(4001, "OrderValidationFailed"),
-                    "Order validation failed for product {product_id}: quantity {quantity} is outside 1-100",
+                logger.OrderValidationFailed(
                     req.ProductId,
-                    req.Quantity);
-                return Results.BadRequest(new { error = "Quantity must be between 1 and 100." });
+                    req.Quantity,
+                    MinimumOrderQuantity,
+                    MaximumOrderQuantity);
+                return Results.BadRequest(new
+                {
+                    error = $"Quantity must be between {MinimumOrderQuantity} and {MaximumOrderQuantity}."
+                });
             }
 
             var product = await dbContext.Products.FindAsync(req.ProductId);
             if (product == null)
             {
-                logger.LogWarning(
-                    new EventId(4002, "ProductNotFound"),
-                    "Order rejected because product {product_id} was not found",
-                    req.ProductId);
+                logger.ProductNotFound(req.ProductId);
                 return Results.NotFound();
             }
 
-            using var logScope = logger.BeginScope(new Dictionary<string, object?>
+            using var logScope = logger.BeginApplicationScope(new ApplicationLogScope
             {
-                ["event_name"] = "order_processed",
-                ["product_id"] = product.Id,
-                ["product_category"] = product.Category
+                EventName = "order_processed",
+                ProductId = product.Id,
+                ProductCategory = product.Category
             });
 
             metrics.ActiveOrders.Add(1);
             try
             {
-                bool isFailed = Random.Shared.NextDouble() < 0.05;
+                bool isFailed = Random.Shared.NextDouble() < OrderFailureProbability;
                 string status = isFailed ? "Failed" : "Completed";
 
                 var order = new Order
@@ -90,21 +96,11 @@ public static class OrderEndpoints
                 if (isFailed)
                 {
                     metrics.OrdersFailed.Add(1, metricTags);
-                    logger.LogError(
-                        new EventId(4004, "OrderFailed"),
-                        "Order {order_id} failed to process for product {product_name} in {duration_ms} ms",
-                        order.Id,
-                        product.Name,
-                        sw.ElapsedMilliseconds);
+                    logger.OrderFailed(order.Id, product.Name, sw.ElapsedMilliseconds);
                 }
                 else
                 {
-                    logger.LogInformation(
-                        new EventId(4003, "OrderCompleted"),
-                        "Order {order_id} processed successfully for product {product_name} in {duration_ms} ms",
-                        order.Id,
-                        product.Name,
-                        sw.ElapsedMilliseconds);
+                    logger.OrderCompleted(order.Id, product.Name, sw.ElapsedMilliseconds);
                 }
 
                 return Results.Created($"/api/orders/{order.Id}", order);

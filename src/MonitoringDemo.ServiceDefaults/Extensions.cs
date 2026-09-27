@@ -30,12 +30,23 @@ public static class Extensions
 
     public static IHostApplicationBuilder ConfigureOpenTelemetry(this IHostApplicationBuilder builder)
     {
+        var serviceName = builder.Environment.ApplicationName;
         var hasAspireOtlpEndpoint =
             !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
         var hasLokiOtlpEndpoint = Uri.TryCreate(
             builder.Configuration["LOKI_OTLP_ENDPOINT"],
             UriKind.Absolute,
             out var lokiOtlpEndpoint);
+
+        builder.Logging.Configure(options =>
+        {
+            options.ActivityTrackingOptions =
+                ActivityTrackingOptions.TraceId |
+                ActivityTrackingOptions.SpanId |
+                ActivityTrackingOptions.ParentId |
+                ActivityTrackingOptions.Baggage |
+                ActivityTrackingOptions.Tags;
+        });
 
         builder.Logging.AddOpenTelemetry(logging =>
         {
@@ -57,13 +68,20 @@ public static class Extensions
         });
 
         builder.Services.AddOpenTelemetry()
-            .ConfigureResource(resource => resource.AddService(builder.Environment.ApplicationName))
+            .ConfigureResource(resource => resource
+                .AddService(serviceName)
+                .AddAttributes(
+                [
+                    new KeyValuePair<string, object>(
+                        "deployment.environment.name",
+                        builder.Environment.EnvironmentName)
+                ]))
             .WithMetrics(metrics =>
             {
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
-                    .AddMeter("MonitoringDemo.ApiService")
+                    .AddMeter(serviceName)
                     .AddPrometheusExporter();
 
                 if (hasAspireOtlpEndpoint)
@@ -73,7 +91,7 @@ public static class Extensions
             })
             .WithTracing(tracing =>
             {
-                tracing.AddSource("MonitoringDemo.ApiService")
+                tracing.AddSource(serviceName)
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation();
 

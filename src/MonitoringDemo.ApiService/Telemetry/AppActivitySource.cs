@@ -2,7 +2,9 @@ using System.Diagnostics;
 
 namespace MonitoringDemo.ApiService.Telemetry;
 
-public class AppActivitySource
+public sealed class AppActivitySource : IDisposable
 {
-    public ActivitySource Source { get; } = new ActivitySource("MonitoringDemo.ApiService");
+    public ActivitySource Source { get; } = new(TelemetryConstants.ActivitySourceName);
+
+    public void Dispose() => Source.Dispose();
 }

@@ -1,10 +1,22 @@
 using System.Diagnostics;
+using MonitoringDemo.ApiService.Observability;
 using MonitoringDemo.ApiService.Telemetry;
 
 namespace MonitoringDemo.ApiService.Services;
 
 public sealed class LoggingSeedService : BackgroundService
 {
+    private const int StartupDelaySeconds = 2;
+    private const int SeedEventCount = 24;
+    private const int EventsPerCorrelation = 3;
+    private const int DurationBaseMilliseconds = 35;
+    private const int DurationMultiplier = 47;
+    private const int DurationModulo = 970;
+    private const int OrderIdBase = 10_000;
+    private const int TenantCount = 4;
+    private const int ExceptionFrequency = 8;
+    private const int PaymentRetryCount = 2;
+
     private static readonly string[] Regions = ["ap-southeast", "eu-west", "us-east"];
     private static readonly LogLevel[] Levels =
     [
@@ -33,7 +45,7 @@ public sealed class LoggingSeedService : BackgroundService
     {
         try
         {
-            await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(StartupDelaySeconds), stoppingToken);
             EmitSeedLogs();
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -42,49 +54,44 @@ public sealed class LoggingSeedService : BackgroundService
         }
         catch (Exception exception)
         {
-            _logger.LogError(
-                new EventId(2101, "LoggingSeedFailed"),
-                exception,
-                "Logging seed failed; the application will continue running");
+            _logger.LoggingSeedFailed(exception);
         }
     }
 
     private void EmitSeedLogs()
     {
-        for (var index = 1; index <= 24; index++)
+        for (var index = 1; index <= SeedEventCount; index++)
         {
             using var activity = _activitySource.Source.StartActivity("SeedLogEvent", ActivityKind.Internal);
             var level = Levels[(index - 1) % Levels.Length];
-            var correlationId = $"seed-correlation-{((index - 1) / 3) + 1:00}";
+            var correlationId = $"seed-correlation-{((index - 1) / EventsPerCorrelation) + 1:00}";
             var requestId = $"seed-request-{index:00}";
-            var durationMs = 35 + (index * 47 % 970);
-            var orderId = 10_000 + index;
+            var durationMs = DurationBaseMilliseconds + (index * DurationMultiplier % DurationModulo);
+            var orderId = OrderIdBase + index;
 
             activity?.SetTag("demo.seed", true);
             activity?.SetTag("order.id", orderId);
             activity?.SetTag("correlation.id", correlationId);
 
-            using var scope = _logger.BeginScope(new Dictionary<string, object?>
+            using var scope = _logger.BeginApplicationScope(new ApplicationLogScope
             {
-                ["correlation_id"] = correlationId,
-                ["request_id"] = requestId,
-                ["trace_id"] = activity?.TraceId.ToString(),
-                ["span_id"] = activity?.SpanId.ToString(),
-                ["region"] = Regions[index % Regions.Length],
-                ["tenant_id"] = $"tenant-{(index % 4) + 1}",
-                ["event_name"] = "seed_order_processed",
-                ["seed_data"] = true
+                EventName = "seed_order_processed",
+                CorrelationId = correlationId,
+                RequestId = requestId,
+                TraceId = activity?.TraceId.ToString(),
+                SpanId = activity?.SpanId.ToString(),
+                Region = Regions[index % Regions.Length],
+                TenantId = $"tenant-{(index % TenantCount) + 1}",
+                SeedData = true
             });
 
-            _logger.Log(
+            _logger.SeedOrderProcessed(
                 level,
-                new EventId(2000 + index, "SeedOrderProcessed"),
-                "Seed order {order_id} finished with {order_status} in {duration_ms} ms",
                 orderId,
                 level >= LogLevel.Error ? "failed" : "completed",
                 durationMs);
 
-            if (index % 8 == 0)
+            if (index % ExceptionFrequency == 0)
             {
                 try
                 {
@@ -92,20 +99,13 @@ public sealed class LoggingSeedService : BackgroundService
                 }
                 catch (TimeoutException exception)
                 {
-                    _logger.LogError(
-                        new EventId(2099, "SeedPaymentException"),
-                        exception,
-                        "Payment exception captured for order {order_id}; retry {retry_count}",
-                        orderId,
-                        2);
+                    _logger.SeedPaymentException(exception, orderId, PaymentRetryCount);
                 }
             }
         }
 
-        _logger.LogInformation(
-            new EventId(2100, "LoggingSeedComplete"),
-            "Logging seed completed with {seed_event_count} base events and {exception_event_count} exception events",
-            24,
-            3);
+        _logger.LoggingSeedComplete(
+            SeedEventCount,
+            SeedEventCount / ExceptionFrequency);
     }
 }

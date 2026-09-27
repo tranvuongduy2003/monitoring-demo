@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MonitoringDemo.ApiService.Observability;
 using MonitoringDemo.ApiService.Services;
 using MonitoringDemo.ApiService.Telemetry;
 
@@ -6,6 +7,10 @@ namespace MonitoringDemo.ApiService.Endpoints;
 
 public static class LoggingEndpoints
 {
+    private const int DefaultAnalyticsWindowMinutes = 60;
+    private const int DemoOrderId = 42;
+    private const long DemoDurationMilliseconds = 725;
+
     public static void MapLoggingEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/api/logging");
@@ -14,7 +19,9 @@ public static class LoggingEndpoints
             int? minutes,
             LokiQueryService loki,
             CancellationToken cancellationToken) =>
-            Results.Ok(await loki.GetAnalyticsAsync(minutes ?? 60, cancellationToken)));
+            Results.Ok(await loki.GetAnalyticsAsync(
+                minutes ?? DefaultAnalyticsWindowMinutes,
+                cancellationToken)));
 
         group.MapPost("/demo", (
             HttpContext context,
@@ -30,27 +37,25 @@ public static class LoggingEndpoints
             var requestId = context.TraceIdentifier;
 
             using var activity = activitySource.Source.StartActivity("InteractiveLoggingDemo", ActivityKind.Internal);
-            using var scope = logger.BeginScope(new Dictionary<string, object?>
+            using var scope = logger.BeginApplicationScope(new ApplicationLogScope
             {
-                ["correlation_id"] = correlationId,
-                ["request_id"] = requestId,
-                ["trace_id"] = activity?.TraceId.ToString() ?? Activity.Current?.TraceId.ToString(),
-                ["span_id"] = activity?.SpanId.ToString() ?? Activity.Current?.SpanId.ToString(),
-                ["event_name"] = "interactive_demo",
-                ["tenant_id"] = "learning-lab"
+                EventName = "interactive_demo",
+                CorrelationId = correlationId,
+                RequestId = requestId,
+                TraceId = activity?.TraceId.ToString() ?? Activity.Current?.TraceId.ToString(),
+                SpanId = activity?.SpanId.ToString() ?? Activity.Current?.SpanId.ToString(),
+                TenantId = "learning-lab"
             });
 
-            // Unstructured: readable, but it provides no separately queryable business fields.
-            logger.LogInformation("Unstructured demo event: a learner clicked the log generator");
+            // Narrative-only: readable, but it provides no separately queryable business fields.
+            logger.InteractiveDemoRequested();
 
             // Structured: the template and values remain separate attributes in OpenTelemetry/Loki.
-            logger.Log(
+            logger.InteractiveDemo(
                 logLevel,
-                new EventId(3000, "InteractiveDemo"),
-                "Interactive {demo_level} event for order {order_id} took {duration_ms} ms",
                 logLevel.ToString(),
-                42,
-                725);
+                DemoOrderId,
+                DemoDurationMilliseconds);
 
             if (includeException == true)
             {
@@ -61,11 +66,7 @@ public static class LoggingEndpoints
                 catch (InvalidOperationException exception)
                 {
                     activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
-                    logger.LogError(
-                        new EventId(3001, "InteractiveException"),
-                        exception,
-                        "Interactive exception for order {order_id}",
-                        42);
+                    logger.InteractiveException(exception, DemoOrderId);
                 }
             }
 

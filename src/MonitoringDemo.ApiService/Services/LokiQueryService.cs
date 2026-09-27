@@ -1,18 +1,30 @@
 using System.Globalization;
 using System.Text.Json;
+using MonitoringDemo.ApiService.Observability;
+using MonitoringDemo.ApiService.Telemetry;
 
 namespace MonitoringDemo.ApiService.Services;
 
 public sealed class LokiQueryService
 {
-    private const string ServiceSelector = "{service_name=\"MonitoringDemo.ApiService\"}";
+    private const int RequestTimeoutSeconds = 5;
+    private const int MinimumAnalyticsWindowMinutes = 5;
+    private const int MaximumAnalyticsWindowMinutes = 24 * 60;
+    private const int VectorValueIndex = 1;
+
+    private const string ServiceSelector = "{service_name=\"" + TelemetryConstants.ServiceName + "\"}";
     private readonly HttpClient _httpClient;
+    private readonly ILogger<LokiQueryService> _logger;
     private readonly string _baseUrl;
 
-    public LokiQueryService(HttpClient httpClient, IConfiguration configuration)
+    public LokiQueryService(
+        HttpClient httpClient,
+        IConfiguration configuration,
+        ILogger<LokiQueryService> logger)
     {
         _httpClient = httpClient;
-        _httpClient.Timeout = TimeSpan.FromSeconds(5);
+        _logger = logger;
+        _httpClient.Timeout = TimeSpan.FromSeconds(RequestTimeoutSeconds);
         _baseUrl = configuration["Loki:BaseUrl"]?.TrimEnd('/') ?? "http://localhost:3100";
     }
 
@@ -22,13 +34,16 @@ public sealed class LokiQueryService
         new("Errors and critical events", $"{ServiceSelector} | severity_text =~ `(?i)error|critical`", "Filter structured severity metadata."),
         new("One correlation", $"{ServiceSelector} | correlation_id = `seed-correlation-01`", "Follow related operations across log lines."),
         new("One trace", $"{ServiceSelector} | trace_id = `<trace-id>`", "Pivot from a trace to its logs."),
-        new("Slow operations", $"{ServiceSelector} | duration_ms > 500", "Apply a numeric structured-metadata filter."),
+        new("Slow operations", $"{ServiceSelector} | duration_ms > {TelemetryConstants.SlowOperationThresholdMilliseconds}", "Apply a numeric structured-metadata filter."),
         new("Volume by level", $"sum by (severity_text) (count_over_time({ServiceSelector} | severity_text != `` [5m]))", "Turn logs into a time-series analytic.")
     ];
 
     public async Task<LogAnalytics> GetAnalyticsAsync(int minutes, CancellationToken cancellationToken)
     {
-        minutes = Math.Clamp(minutes, 5, 1440);
+        minutes = Math.Clamp(
+            minutes,
+            MinimumAnalyticsWindowMinutes,
+            MaximumAnalyticsWindowMinutes);
         var window = $"{minutes}m";
         var volumeQuery = $"sum by (severity_text) (count_over_time({ServiceSelector} | severity_text != `` [{window}]))";
 
@@ -51,8 +66,13 @@ public sealed class LokiQueryService
                 QueryExamples,
                 null);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
         {
+            _logger.LokiQueryFailed(exception, minutes);
             return new LogAnalytics(
                 false,
                 minutes,
@@ -78,7 +98,7 @@ public sealed class LokiQueryService
             var name = item.GetProperty("metric").TryGetProperty(label, out var labelValue)
                 ? labelValue.GetString() ?? "unknown"
                 : "unknown";
-            var rawValue = item.GetProperty("value")[1].GetString();
+            var rawValue = item.GetProperty("value")[VectorValueIndex].GetString();
             if (double.TryParse(rawValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
             {
                 values[name] = value;

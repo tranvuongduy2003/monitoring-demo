@@ -1,6 +1,7 @@
 using MonitoringDemo.ApiService.Data;
 using MonitoringDemo.ApiService.Endpoints;
 using MonitoringDemo.ApiService.Middleware;
+using MonitoringDemo.ApiService.Observability;
 using MonitoringDemo.ApiService.Services;
 using MonitoringDemo.ApiService.Telemetry;
 
@@ -38,7 +39,7 @@ try
 }
 catch (Exception ex)
 {
-    app.Logger.LogError(ex, "An error occurred while seeding the database.");
+    app.Logger.DatabaseSeedFailed(ex);
 }
 
 app.Run();

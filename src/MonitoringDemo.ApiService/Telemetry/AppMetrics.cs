@@ -11,7 +11,7 @@ public class AppMetrics
 
     public AppMetrics(IMeterFactory meterFactory)
     {
-        var meter = meterFactory.Create("MonitoringDemo.ApiService");
+        var meter = meterFactory.Create(TelemetryConstants.MeterName);
         
         OrdersCreated = meter.CreateCounter<long>("orders_created_total", description: "Total orders created");
         OrdersFailed = meter.CreateCounter<long>("orders_failed_total", description: "Total failed orders");

@@ -1,10 +1,13 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using MonitoringDemo.ApiService.Observability;
 
 namespace MonitoringDemo.ApiService.Middleware;
 
 public sealed partial class LogContextMiddleware
 {
+    private const string SafeCorrelationIdPattern = "^[A-Za-z0-9._:-]{1,128}$";
+
     public const string CorrelationHeader = "X-Correlation-ID";
     public const string RequestHeader = "X-Request-ID";
 
@@ -31,20 +34,16 @@ public sealed partial class LogContextMiddleware
         Activity.Current?.SetTag("request.id", requestId);
         Activity.Current?.AddBaggage("correlation.id", correlationId);
 
-        using var scope = _logger.BeginScope(new Dictionary<string, object?>
+        using var scope = _logger.BeginApplicationScope(new ApplicationLogScope
         {
-            ["correlation_id"] = correlationId,
-            ["request_id"] = requestId,
-            ["trace_id"] = traceId,
-            ["span_id"] = spanId,
-            ["event_name"] = "http_request"
+            EventName = "http_request",
+            CorrelationId = correlationId,
+            RequestId = requestId,
+            TraceId = traceId,
+            SpanId = spanId
         });
 
-        _logger.LogInformation(
-            new EventId(1000, "RequestStarted"),
-            "HTTP {http_method} {http_path} started",
-            context.Request.Method,
-            context.Request.Path);
+        _logger.RequestStarted(context.Request.Method, context.Request.Path.Value ?? "/");
 
         try
         {
@@ -52,22 +51,24 @@ public sealed partial class LogContextMiddleware
         }
         catch (Exception exception)
         {
-            _logger.LogError(
-                new EventId(1002, "RequestUnhandledException"),
+            _logger.RequestUnhandledException(
                 exception,
-                "HTTP {http_method} {http_path} failed with an unhandled exception",
                 context.Request.Method,
-                context.Request.Path);
+                context.Request.Path.Value ?? "/");
             throw;
         }
         finally
         {
             var elapsedMs = Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds;
-            _logger.LogInformation(
-                new EventId(1001, "RequestCompleted"),
-                "HTTP {http_method} {http_path} completed with {status_code} in {duration_ms:F1} ms",
+            var level = context.Response.StatusCode >= StatusCodes.Status500InternalServerError
+                ? LogLevel.Error
+                : context.Response.StatusCode >= StatusCodes.Status400BadRequest
+                    ? LogLevel.Warning
+                    : LogLevel.Information;
+            _logger.RequestCompleted(
+                level,
                 context.Request.Method,
-                context.Request.Path,
+                context.Request.Path.Value ?? "/",
                 context.Response.StatusCode,
                 elapsedMs);
         }
@@ -81,6 +82,6 @@ public sealed partial class LogContextMiddleware
             : Guid.NewGuid().ToString("N");
     }
 
-    [GeneratedRegex("^[A-Za-z0-9._:-]{1,128}$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(SafeCorrelationIdPattern, RegexOptions.CultureInvariant)]
     private static partial Regex SafeCorrelationId();
 }

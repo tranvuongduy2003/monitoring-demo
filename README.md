@@ -120,9 +120,12 @@ Aspire will automatically:
 - Auto-instrumented: ASP.NET Core, HTTP client, EF Core
 
 ### Logs
-- Structured and unstructured examples via `ILogger`
-- Request scopes with correlation ID, request ID, trace ID, and span ID
-- Exception records with stack traces and stable event IDs
+
+- Source-generated logging methods centralize message templates, levels, and stable event IDs
+- Typed application scopes standardize `event_name`, correlation/request IDs, trace/span IDs, and business fields
+- Event ID ranges separate HTTP (`1000`), seed/demo (`2000-3000`), orders (`4000`), workers (`5000`), dependencies (`6000`), and host lifecycle (`9000`)
+- HTTP completion logs use status-aware levels: information for success, warning for 4xx, and error for 5xx
+- Exception records retain stack traces and structured context
 - Exported via OpenTelemetry to both Aspire Dashboard and Loki
 - Queried with LogQL in the provisioned `MonitoringDemo - Logs & Correlation` Grafana dashboard
 

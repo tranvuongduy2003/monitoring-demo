@@ -71,7 +71,8 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 - Provisioned Grafana data sources and dashboards
 - Background order simulation, repeatable metric/trace seed endpoints, startup trace scenarios, and continuous bounded metric seeding so every visualization has test data
 - File-based target discovery plus provisioned recording and alerting rules
-- React dashboard with order, metric, logging, and LogQL learning views
+- React workspace with focused pages for orders, OpenTelemetry, metrics, Prometheus, logs, traces, and learning resources
+- Responsive application shell with persistent desktop navigation and a mobile sidebar
 - Domain-oriented frontend with strict `@/` absolute imports
 - Environment-driven local and DevOps configuration
 
@@ -128,8 +129,8 @@ src/
 ├── MonitoringDemo.ApiService/       API, data, telemetry, and background jobs
 ├── MonitoringDemo.Frontend/         React dashboard
 │   └── src/
-│       ├── app/                      Application entry
-│       ├── pages/                    Page composition
+│       ├── app/                      Application entry and routing
+│       ├── pages/                    Focused page composition
 │       ├── domains/                  Orders, metrics, logging, and tracing
 │       └── shared/                   Reusable UI, hooks, and services
 └── MonitoringDemo.ServiceDefaults/  Health checks and OpenTelemetry defaults

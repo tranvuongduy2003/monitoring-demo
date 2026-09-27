@@ -54,6 +54,10 @@ public static class Extensions
             builder.Configuration["TEMPO_OTLP_ENDPOINT"],
             UriKind.Absolute,
             out var tempoOtlpEndpoint);
+        var hasCollectorOtlpEndpoint = Uri.TryCreate(
+            builder.Configuration["COLLECTOR_OTLP_ENDPOINT"],
+            UriKind.Absolute,
+            out var collectorOtlpEndpoint);
 
         builder.Logging.Configure(options =>
         {
@@ -70,7 +74,15 @@ public static class Extensions
             logging.IncludeFormattedMessage = true;
             logging.IncludeScopes = true;
 
-            if (hasLokiOtlpEndpoint && lokiOtlpEndpoint is not null)
+            if (hasCollectorOtlpEndpoint && collectorOtlpEndpoint is not null)
+            {
+                logging.AddOtlpExporter(exporter =>
+                {
+                    exporter.Endpoint = collectorOtlpEndpoint;
+                    exporter.Protocol = OtlpExportProtocol.Grpc;
+                });
+            }
+            else if (hasLokiOtlpEndpoint && lokiOtlpEndpoint is not null)
             {
                 logging.AddOtlpExporter(exporter =>
                 {
@@ -114,6 +126,15 @@ public static class Extensions
                 {
                     metrics.AddOtlpExporter();
                 }
+
+                if (hasCollectorOtlpEndpoint && collectorOtlpEndpoint is not null)
+                {
+                    metrics.AddOtlpExporter("collector", exporter =>
+                    {
+                        exporter.Endpoint = collectorOtlpEndpoint;
+                        exporter.Protocol = OtlpExportProtocol.Grpc;
+                    });
+                }
             })
             .WithTracing(tracing =>
             {
@@ -126,7 +147,15 @@ public static class Extensions
                     tracing.AddOtlpExporter();
                 }
 
-                if (hasTempoOtlpEndpoint && tempoOtlpEndpoint is not null)
+                if (hasCollectorOtlpEndpoint && collectorOtlpEndpoint is not null)
+                {
+                    tracing.AddOtlpExporter("collector", exporter =>
+                    {
+                        exporter.Endpoint = collectorOtlpEndpoint;
+                        exporter.Protocol = OtlpExportProtocol.Grpc;
+                    });
+                }
+                else if (hasTempoOtlpEndpoint && tempoOtlpEndpoint is not null)
                 {
                     tracing.AddOtlpExporter("tempo", exporter =>
                     {

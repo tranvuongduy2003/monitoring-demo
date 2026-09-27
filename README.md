@@ -47,6 +47,7 @@ Browser
 | **Aspire AppHost** | Loads DevOps environment settings, starts every resource, injects service references, performs dependency health checks, and exposes local endpoints. |
 | **React frontend** | Displays order, metric, logging, and distributed tracing labs. Vite proxies `/api/*` requests to the API, so the browser does not need an internal service address. |
 | **API service** | Provides order/product endpoints, telemetry analytics, health checks, and the Prometheus `/metrics` endpoint. |
+| **OpenTelemetry Collector** | Receives OTLP over gRPC or HTTP, applies memory limiting and batching, and routes each signal to its configured exporters. |
 | **Background services** | Continuously create sample orders, metrics, and structured logs so dashboards contain useful data immediately. |
 | **PostgreSQL** | Stores products and orders. Aspire injects the generated database connection string into the API. |
 | **Prometheus** | Pulls metrics from `/metrics`; Grafana reads them with PromQL. |
@@ -64,6 +65,8 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 - Repeatable multi-signal OpenTelemetry seeding with an in-process timeline, per-operation analytics, error counts, and latency statistics
 - Dedicated OTLP transport lab covering OTLP, OTLP/gRPC, OTLP/HTTP, signal paths, ports, endpoint precedence, and live non-secret configuration
 - Repeatable OTLP batch seeding with protocol and signal breakdowns, payload compression, retry/failure counts, latency percentiles, and recent export visualization
+- Production-shaped OpenTelemetry Collector topology with OTLP receivers, memory limiting, batching, per-signal pipelines, Tempo/Loki exporters, and a Prometheus scrape endpoint
+- Repeatable Collector pipeline seeding with receiver throughput, signal routing, batch triggers, memory pressure, retry/drop counts, and latency analytics
 - Correlation, request, trace, and span IDs across application logs
 - Prometheus metric scraping and Loki OTLP log storage
 - Live Prometheus architecture lab covering pull collection, scrape intervals, targets, jobs, instances, exporters, service discovery, TSDB retention, and rules
@@ -73,7 +76,7 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 - Provisioned Grafana data sources and dashboards
 - Background order simulation, repeatable metric/trace seed endpoints, startup trace scenarios, and continuous bounded metric seeding so every visualization has test data
 - File-based target discovery plus provisioned recording and alerting rules
-- React workspace with focused pages for orders, OpenTelemetry, OTLP, metrics, Prometheus, logs, traces, and learning resources
+- React workspace with focused pages for orders, OpenTelemetry, OTLP, Collector, metrics, Prometheus, logs, traces, and learning resources
 - Responsive application shell with persistent desktop navigation and a mobile sidebar
 - Domain-oriented frontend with strict `@/` absolute imports
 - Environment-driven local and DevOps configuration
@@ -111,6 +114,7 @@ dotnet run --project src/MonitoringDemo.AppHost
 
 Ports and credentials can be changed in the AppHost `.env` file.
 Tempo also exposes its standard OTLP receivers on port `4317` for gRPC and `4318` for HTTP/protobuf.
+The Collector receives application telemetry on host ports `14317` (gRPC) and `14318` (HTTP), and exposes transformed metrics for Prometheus on `9464`.
 
 ## Environment files
 

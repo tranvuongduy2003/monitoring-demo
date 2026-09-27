@@ -5,6 +5,7 @@ const areas = [
   { route: 'orders', label: 'Orders', description: 'Watch business activity, revenue, failures, and recent transactions.', accent: 'blue', value: 'Business health' },
   { route: 'opentelemetry', label: 'OpenTelemetry', description: 'Explore the SDK pipeline and three correlated telemetry signals.', accent: 'violet', value: 'Signal pipeline' },
   { route: 'otlp', label: 'OTLP', description: 'Compare gRPC and HTTP export paths, live batches, and endpoint configuration.', accent: 'blue', value: 'Telemetry transport' },
+  { route: 'collector', label: 'Collector', description: 'Route signals through receivers, processors, pipelines, and exporters.', accent: 'violet', value: 'Control plane' },
   { route: 'metrics', label: 'Metrics', description: 'Inspect counters, gauges, histograms, labels, and cardinality.', accent: 'cyan', value: 'Measurements' },
   { route: 'prometheus', label: 'Prometheus', description: 'Understand scraping, PromQL, recording rules, alerts, and TSDB.', accent: 'orange', value: 'Time series' },
   { route: 'logs', label: 'Logs', description: 'Generate structured events and investigate them with LogQL.', accent: 'emerald', value: 'Events' },

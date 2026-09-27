@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { AppShell, type AppRoute } from '@/shared/components/AppShell';
+import { CollectorPage } from '@/pages/CollectorPage';
 import { LearnPage } from '@/pages/LearnPage';
 import { LogsPage } from '@/pages/LogsPage';
 import { MetricsPage } from '@/pages/MetricsPage';
@@ -15,6 +16,7 @@ const pages: Record<AppRoute, { title: string; content: ReactNode }> = {
   orders: { title: 'Orders', content: <OrdersPage /> },
   opentelemetry: { title: 'OpenTelemetry', content: <OpenTelemetryPage /> },
   otlp: { title: 'OTLP', content: <OtlpPage /> },
+  collector: { title: 'OpenTelemetry Collector', content: <CollectorPage /> },
   metrics: { title: 'Metrics', content: <MetricsPage /> },
   prometheus: { title: 'Prometheus', content: <PrometheusPage /> },
   logs: { title: 'Logs', content: <LogsPage /> },

@@ -1,5 +1,6 @@
 import type { useOpenTelemetryDashboard } from '@/domains/opentelemetry/hooks/useOpenTelemetryDashboard';
 import type { OpenTelemetryTimelinePoint } from '@/domains/opentelemetry/types';
+import { SectionHeading } from '@/shared/components/SectionHeading';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 
 type OpenTelemetryDashboardModel = ReturnType<typeof useOpenTelemetryDashboard>;
@@ -10,23 +11,22 @@ export function OpenTelemetryDashboard({ model }: { model: OpenTelemetryDashboar
 
   return (
     <section className="panel learning-panel otel-lab" aria-labelledby="otel-heading">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">OpenTelemetry</p>
-          <h2 id="otel-heading">One SDK pipeline, three correlated signals</h2>
-          <p>
-            {data
-              ? `${data.analytics.operationCount} seeded operations in the last ${data.windowMinutes} minutes`
-              : 'Loading the OpenTelemetry pipeline...'}
-          </p>
-        </div>
-        <div className="tracing-heading-actions">
+      <SectionHeading
+        eyebrow="OpenTelemetry"
+        title="One SDK pipeline, three correlated signals"
+        headingId="otel-heading"
+        description={data
+          ? `${data.analytics.operationCount} seeded operations in the last ${data.windowMinutes} minutes`
+          : 'Loading the OpenTelemetry pipeline...'}
+        actions={(
+          <>
           <StatusBadge active={Boolean(data)} activeLabel="SDK configured" inactiveLabel="Connecting" />
           <button type="button" onClick={() => void seedTelemetry()} disabled={seeding}>
             {seeding ? 'Seeding...' : 'Seed 100 multi-signal operations'}
           </button>
-        </div>
-      </div>
+          </>
+        )}
+      />
 
       {(overview.error || error) && (
         <p className="error panel-notice" role="alert">{error || 'OpenTelemetry analytics could not be loaded. The page will keep retrying.'}</p>
@@ -181,8 +181,9 @@ export function OpenTelemetryDashboard({ model }: { model: OpenTelemetryDashboar
   );
 }
 
-function Summary({ label, value, detail, tone = '' }: { label: string; value: string | number; detail: string; tone?: string }) {
-  return <article className={tone}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
+function Summary({ label, value, detail, tone }: { label: string; value: string | number; detail: string; tone?: 'trace' | 'metric' | 'log' | 'error' }) {
+  const className = tone ? `otel-summary__item--${tone}` : undefined;
+  return <article className={className}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
 }
 
 function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {

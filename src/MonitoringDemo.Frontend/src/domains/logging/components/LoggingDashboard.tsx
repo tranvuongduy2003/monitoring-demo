@@ -1,5 +1,6 @@
 import type { useLoggingDashboard } from '@/domains/logging/hooks/useLoggingDashboard';
 import { QueryGrid } from '@/shared/components/QueryGrid';
+import { SectionHeading } from '@/shared/components/SectionHeading';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 
 type LoggingDashboardModel = ReturnType<typeof useLoggingDashboard>;
@@ -13,14 +14,12 @@ export function LoggingDashboard({ model }: { model: LoggingDashboardModel }) {
   return (
     <>
       <section className="panel learning-panel">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Live Loki analytics</p>
-            <h2>Logs in the last {data?.windowMinutes ?? 60} minutes</h2>
-            <p>{data?.available ? `${data.totalLogs} events indexed` : data?.message ?? 'Connecting to Loki...'}</p>
-          </div>
-          <StatusBadge active={Boolean(data?.available)} activeLabel="Loki connected" inactiveLabel="Loki warming up" />
-        </div>
+        <SectionHeading
+          eyebrow="Live Loki analytics"
+          title={<>Logs in the last {data?.windowMinutes ?? 60} minutes</>}
+          description={data?.available ? `${data.totalLogs} events indexed` : data?.message ?? 'Connecting to Loki...'}
+          actions={<StatusBadge active={Boolean(data?.available)} activeLabel="Loki connected" inactiveLabel="Loki warming up" />}
+        />
 
         {(analytics.error || error) && (
           <p className="error panel-notice" role="alert">{error || 'Log analytics could not be loaded. The page will keep retrying.'}</p>
@@ -59,13 +58,11 @@ export function LoggingDashboard({ model }: { model: LoggingDashboardModel }) {
       </section>
 
       <section className="panel learning-panel">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Basic LogQL</p>
-            <h2>Query cookbook</h2>
-            <p>Copy these into Grafana Explore and change the sample values.</p>
-          </div>
-        </div>
+        <SectionHeading
+          eyebrow="Basic LogQL"
+          title="Query cookbook"
+          description="Copy these into Grafana Explore and change the sample values."
+        />
         <QueryGrid queries={data?.queries ?? []} />
       </section>
     </>

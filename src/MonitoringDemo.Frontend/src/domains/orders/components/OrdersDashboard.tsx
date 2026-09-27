@@ -1,5 +1,6 @@
 import type { useDemoReset } from '@/domains/demo/hooks/useDemoReset';
 import type { useOrdersDashboard } from '@/domains/orders/hooks/useOrdersDashboard';
+import { SectionHeading } from '@/shared/components/SectionHeading';
 import { dateTime, money } from '@/shared/lib/formatters';
 
 type OrdersDashboardModel = ReturnType<typeof useOrdersDashboard>;
@@ -33,13 +34,11 @@ export function OrdersDashboard({ model, reset }: { model: OrdersDashboardModel;
       </section>
 
       <section className="panel">
-        <div className="section-heading">
-          <div>
-            <h2>Recent orders</h2>
-            <p>Refreshes every 5 seconds</p>
-          </div>
-          <button className="secondary" type="button" onClick={refresh} disabled={reset.clearing}>Refresh</button>
-        </div>
+        <SectionHeading
+          title="Recent orders"
+          description="Refreshes every 5 seconds"
+          actions={<button className="secondary" type="button" onClick={refresh} disabled={reset.clearing}>Refresh</button>}
+        />
         <div className="table-wrap">
           <table>
             <thead>

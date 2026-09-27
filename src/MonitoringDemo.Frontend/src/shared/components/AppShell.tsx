@@ -5,6 +5,7 @@ export type AppRoute =
   | 'orders'
   | 'opentelemetry'
   | 'otlp'
+  | 'collector'
   | 'metrics'
   | 'prometheus'
   | 'logs'
@@ -24,6 +25,7 @@ const navigationGroups: { label: string; items: NavigationItem[] }[] = [
     items: [
       { route: 'opentelemetry', label: 'OpenTelemetry', icon: 'telemetry' },
       { route: 'otlp', label: 'OTLP', icon: 'otlp' },
+      { route: 'collector', label: 'Collector', icon: 'collector' },
       { route: 'metrics', label: 'Metrics', icon: 'metrics' },
       { route: 'prometheus', label: 'Prometheus', icon: 'prometheus' },
       { route: 'logs', label: 'Logs', icon: 'logs' },
@@ -87,7 +89,7 @@ export function AppShell({ activeRoute, children }: { activeRoute: AppRoute; chi
   );
 }
 
-type IconName = 'overview' | 'orders' | 'telemetry' | 'otlp' | 'metrics' | 'prometheus' | 'logs' | 'traces' | 'learn';
+type IconName = 'overview' | 'orders' | 'telemetry' | 'otlp' | 'collector' | 'metrics' | 'prometheus' | 'logs' | 'traces' | 'learn';
 
 function NavIcon({ name }: { name: IconName }) {
   const paths: Record<IconName, ReactNode> = {
@@ -95,6 +97,7 @@ function NavIcon({ name }: { name: IconName }) {
     orders: <><path d="M6 3h12l2 4v14H4V7l2-4Z" /><path d="M4 8h16M9 12h6" /></>,
     telemetry: <><circle cx="12" cy="12" r="3" /><path d="M12 2v4m0 12v4M2 12h4m12 0h4M5 5l3 3m8 8 3 3m0-14-3 3M8 16l-3 3" /></>,
     otlp: <><path d="M4 8h11M9 4l-5 4 5 4M20 16H9m6-4 5 4-5 4" /><circle cx="12" cy="8" r="1" /><circle cx="12" cy="16" r="1" /></>,
+    collector: <><path d="M4 5h16v4H4zM4 15h16v4H4z" /><path d="M8 9v6m8-6v6" /><circle cx="8" cy="7" r="1" /><circle cx="16" cy="17" r="1" /></>,
     metrics: <path d="M4 20V10m5 10V4m6 16v-7m5 7V7" />,
     prometheus: <><path d="M12 3c2 4-1 5 2 8 1-2 3-3 3-6 3 3 4 6 3 9-1 5-5 7-8 7s-7-2-8-7c-1-4 2-7 5-10 0 3 1 5 3 6 2-3-1-4 0-7Z" /><path d="M8 16h8" /></>,
     logs: <><path d="M5 3h14v18H5z" /><path d="M8 8h8M8 12h8M8 16h5" /></>,

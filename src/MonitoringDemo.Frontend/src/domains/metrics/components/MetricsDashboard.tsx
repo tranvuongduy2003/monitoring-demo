@@ -1,4 +1,5 @@
 import type { useMetricsDashboard } from '@/domains/metrics/hooks/useMetricsDashboard';
+import { SectionHeading } from '@/shared/components/SectionHeading';
 import { QueryGrid } from '@/shared/components/QueryGrid';
 import { dateTime } from '@/shared/lib/formatters';
 
@@ -13,16 +14,12 @@ export function MetricsDashboard({ model }: { model: MetricsDashboardModel }) {
 
   return (
     <section className="panel learning-panel metrics-lab">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Metrics lab</p>
-          <h2>Live instruments and distribution analytics</h2>
-          <p>{data ? `${data.summary.count} observations in the last ${data.windowMinutes} minutes` : 'Loading the seeded metrics window...'}</p>
-        </div>
-        <button type="button" onClick={() => void seedMetrics()} disabled={seeding}>
-          {seeding ? 'Seeding...' : 'Seed 120 observations'}
-        </button>
-      </div>
+      <SectionHeading
+        eyebrow="Metrics lab"
+        title="Live instruments and distribution analytics"
+        description={data ? `${data.summary.count} observations in the last ${data.windowMinutes} minutes` : 'Loading the seeded metrics window...'}
+        actions={<button type="button" onClick={() => void seedMetrics()} disabled={seeding}>{seeding ? 'Seeding...' : 'Seed 120 observations'}</button>}
+      />
 
       {message && <p className="notice panel-notice" role="status">{message}</p>}
       {analytics.error && <p className="error panel-notice" role="alert">Metric data could not be loaded. The page will keep retrying.</p>}

@@ -22,17 +22,22 @@ var lokiPort = GetInt("LOKI_PORT", 3100);
 var tempoPort = GetInt("TEMPO_PORT", 3200);
 var tempoOtlpGrpcPort = GetInt("TEMPO_OTLP_GRPC_PORT", 4317);
 var tempoOtlpHttpPort = GetInt("TEMPO_OTLP_HTTP_PORT", 4318);
+var collectorOtlpGrpcPort = GetInt("OTEL_COLLECTOR_OTLP_GRPC_PORT", 14317);
+var collectorOtlpHttpPort = GetInt("OTEL_COLLECTOR_OTLP_HTTP_PORT", 14318);
+var collectorMetricsPort = GetInt("OTEL_COLLECTOR_METRICS_PORT", 9464);
 var prometheusPort = GetInt("PROMETHEUS_PORT", 9090);
 var grafanaPort = GetInt("GRAFANA_PORT", 3000);
 var apiPort = GetInt("API_PORT", 5000);
 var frontendPort = GetInt("FRONTEND_PORT", 5173);
 var apiMetricsTarget = $"{Get("PROMETHEUS_API_HOST", "host.docker.internal")}:{apiPort}";
+var collectorMetricsTarget = $"{Get("PROMETHEUS_COLLECTOR_HOST", "host.docker.internal")}:{collectorMetricsPort}";
 var defaultPrometheusDataSourceUrl = $"http://host.docker.internal:{prometheusPort}";
 var defaultLokiDataSourceUrl = $"http://host.docker.internal:{lokiPort}";
 var defaultTempoDataSourceUrl = $"http://host.docker.internal:{tempoPort}";
 var defaultLokiBaseUrl = $"http://localhost:{lokiPort}";
 var defaultTempoBaseUrl = $"http://localhost:{tempoPort}";
 var defaultTempoOtlpEndpoint = $"http://localhost:{tempoOtlpHttpPort}/v1/traces";
+var defaultCollectorOtlpEndpoint = $"http://localhost:{collectorOtlpGrpcPort}";
 var defaultFrontendUrl = $"http://localhost:{frontendPort}";
 var defaultApiUrl = $"http://localhost:{apiPort}";
 var defaultGrafanaUrl = $"http://localhost:{grafanaPort}";
@@ -52,6 +57,21 @@ var tempo = builder.AddContainer("tempo", "grafana/tempo", Get("TEMPO_IMAGE_TAG"
     .WithHttpEndpoint(port: tempoOtlpHttpPort, targetPort: 4318, name: "otlp-http")
     .WithArgs("-config.file=/etc/tempo/tempo.yaml", "-config.expand-env=true");
 
+var collector = builder.AddContainer(
+        "otel-collector",
+        "otel/opentelemetry-collector-contrib",
+        Get("OTEL_COLLECTOR_IMAGE_TAG", "0.161.0"))
+    .WithBindMount("otel-collector", "/etc/otelcol-contrib", isReadOnly: true)
+    .WithHttpEndpoint(port: collectorOtlpGrpcPort, targetPort: 4317, name: "otlp-grpc")
+    .WithHttpEndpoint(port: collectorOtlpHttpPort, targetPort: 4318, name: "otlp-http")
+    .WithHttpEndpoint(port: collectorMetricsPort, targetPort: 9464, name: "prometheus")
+    .WithEnvironment("GOMEMLIMIT", Get("OTEL_COLLECTOR_GOMEMLIMIT", "205MiB"))
+    .WithEnvironment("TEMPO_OTLP_HTTP_ENDPOINT", "http://host.docker.internal:" + tempoOtlpHttpPort)
+    .WithEnvironment("LOKI_OTLP_HTTP_LOGS_ENDPOINT", "http://host.docker.internal:" + lokiPort + "/otlp/v1/logs")
+    .WithArgs("--config=/etc/otelcol-contrib/config.yaml")
+    .WaitFor(loki)
+    .WaitFor(tempo);
+
 var prometheus = builder.AddContainer("prometheus", "prom/prometheus", Get("PROMETHEUS_IMAGE_TAG", "latest"))
     .WithBindMount("prometheus", "/etc/prometheus", isReadOnly: true)
     .WithHttpEndpoint(port: prometheusPort, targetPort: 9090, name: "http")
@@ -59,16 +79,19 @@ var prometheus = builder.AddContainer("prometheus", "prom/prometheus", Get("PROM
     .WithEnvironment("PROMETHEUS_EVALUATION_INTERVAL", Get("PROMETHEUS_EVALUATION_INTERVAL", "15s"))
     .WithEnvironment("PROMETHEUS_API_SCRAPE_INTERVAL", Get("PROMETHEUS_API_SCRAPE_INTERVAL", "5s"))
     .WithEnvironment("API_METRICS_TARGET", apiMetricsTarget)
+    .WithEnvironment("COLLECTOR_METRICS_TARGET", collectorMetricsTarget)
     .WithEntrypoint("/bin/sh")
     .WithArgs(
         "-c",
         "sed -e \"s|__SCRAPE_INTERVAL__|${PROMETHEUS_SCRAPE_INTERVAL}|g\" " +
         "-e \"s|__EVALUATION_INTERVAL__|${PROMETHEUS_EVALUATION_INTERVAL}|g\" " +
         "-e \"s|__API_SCRAPE_INTERVAL__|${PROMETHEUS_API_SCRAPE_INTERVAL}|g\" " +
+        "-e \"s|__COLLECTOR_METRICS_TARGET__|${COLLECTOR_METRICS_TARGET}|g\" " +
         "/etc/prometheus/prometheus.yml > /tmp/prometheus.yml && " +
         "sed -e \"s|__API_METRICS_TARGET__|${API_METRICS_TARGET}|g\" " +
         "/etc/prometheus/targets/apiservice.json > /tmp/apiservice-targets.json && " +
-        $"exec /bin/prometheus --config.file=/tmp/prometheus.yml {prometheusRetentionArgument}");
+        $"exec /bin/prometheus --config.file=/tmp/prometheus.yml {prometheusRetentionArgument}")
+    .WaitFor(collector);
 
 var grafana = builder.AddContainer("grafana", "grafana/grafana", Get("GRAFANA_IMAGE_TAG", "latest"))
     .WithBindMount("grafana/provisioning", "/etc/grafana/provisioning", isReadOnly: true)
@@ -88,6 +111,7 @@ var apiService = builder.AddProject<Projects.MonitoringDemo_ApiService>("apiserv
     .WithReference(monitoringdb)
     .WithEnvironment("LOKI_OTLP_ENDPOINT", Get("LOKI_OTLP_ENDPOINT", $"{defaultLokiBaseUrl}/otlp/v1/logs"))
     .WithEnvironment("TEMPO_OTLP_ENDPOINT", Get("TEMPO_OTLP_ENDPOINT", defaultTempoOtlpEndpoint))
+    .WithEnvironment("COLLECTOR_OTLP_ENDPOINT", Get("COLLECTOR_OTLP_ENDPOINT", defaultCollectorOtlpEndpoint))
     .WithEnvironment("Tempo__BaseUrl", Get("TEMPO_BASE_URL", defaultTempoBaseUrl))
     .WithEnvironment("Loki__BaseUrl", Get("LOKI_BASE_URL", defaultLokiBaseUrl))
     .WithEnvironment("Prometheus__BaseUrl", Get("PROMETHEUS_BASE_URL", defaultPrometheusUrl))
@@ -99,6 +123,7 @@ var apiService = builder.AddProject<Projects.MonitoringDemo_ApiService>("apiserv
     .WaitFor(monitoringdb)
     .WaitFor(loki)
     .WaitFor(tempo)
+    .WaitFor(collector)
     .WithHttpEndpoint(port: apiPort);
 
 var frontend = builder.AddViteApp("frontend", "../MonitoringDemo.Frontend")

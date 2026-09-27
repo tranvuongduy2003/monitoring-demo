@@ -9,6 +9,8 @@ const concepts = [
   ['OTLP/gRPC', 'Unary Export RPCs use HTTP/2 channels and the conventional port 4317'],
   ['OTLP/HTTP', 'Signal-specific POST paths use the conventional port 4318'],
   ['Endpoint configuration', 'Signal-specific environment variables override the generic OTLP endpoint'],
+  ['Collector pipeline', 'Receivers, ordered processors, and exporters form one independent pipeline per signal'],
+  ['Memory limiter', 'Soft-limit backpressure protects the Collector before batching and export'],
 ];
 
 export function LearningMap() {

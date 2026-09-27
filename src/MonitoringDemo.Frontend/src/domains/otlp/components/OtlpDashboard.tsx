@@ -1,5 +1,6 @@
 import type { useOtlpDashboard } from '@/domains/otlp/hooks/useOtlpDashboard';
 import type { OtlpProtocolDefinition, OtlpTimelinePoint } from '@/domains/otlp/types';
+import { SectionHeading } from '@/shared/components/SectionHeading';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 
 type OtlpDashboardModel = ReturnType<typeof useOtlpDashboard>;
@@ -12,23 +13,22 @@ export function OtlpDashboard({ model }: { model: OtlpDashboardModel }) {
 
   return (
     <section className="panel learning-panel otlp-lab" aria-labelledby="otlp-heading">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">OTLP</p>
-          <h2 id="otlp-heading">One wire protocol for every telemetry signal</h2>
-          <p>
-            {data
-              ? `${data.analytics.batchCount} export batches and ${data.analytics.recordCount.toLocaleString()} records in the last ${data.windowMinutes} minutes`
-              : 'Loading the OTLP transport pipeline...'}
-          </p>
-        </div>
-        <div className="tracing-heading-actions">
+      <SectionHeading
+        eyebrow="OTLP"
+        title="One wire protocol for every telemetry signal"
+        headingId="otlp-heading"
+        description={data
+          ? `${data.analytics.batchCount} export batches and ${data.analytics.recordCount.toLocaleString()} records in the last ${data.windowMinutes} minutes`
+          : 'Loading the OTLP transport pipeline...'}
+        actions={(
+          <>
           <StatusBadge active={Boolean(data)} activeLabel="Transport configured" inactiveLabel="Connecting" />
           <button type="button" onClick={() => void seedOtlp()} disabled={seeding}>
             {seeding ? 'Seeding...' : 'Seed 120 OTLP batches'}
           </button>
-        </div>
-      </div>
+          </>
+        )}
+      />
 
       {(overview.error || error) && (
         <p className="error panel-notice" role="alert">{error || 'OTLP analytics could not be loaded. The page will keep retrying.'}</p>

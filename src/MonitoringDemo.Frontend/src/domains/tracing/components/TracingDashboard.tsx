@@ -7,6 +7,7 @@ import type {
   TraceSpan,
 } from '@/domains/tracing/types';
 import { QueryGrid } from '@/shared/components/QueryGrid';
+import { SectionHeading } from '@/shared/components/SectionHeading';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 
 type TracingDashboardModel = ReturnType<typeof useTracingDashboard>;
@@ -39,23 +40,22 @@ export function TracingDashboard({ model }: { model: TracingDashboardModel }) {
   return (
     <>
       <section className="panel learning-panel" aria-labelledby="tracing-heading">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Distributed tracing · Tempo</p>
-            <h2 id="tracing-heading">Trace analytics and span explorer</h2>
-            <p>
-              {data?.available
-                ? `${data.indexedTraceCount} seeded traces indexed in the last ${data.windowMinutes} minutes`
-                : data?.message ?? 'Connecting to Tempo...'}
-            </p>
-          </div>
-          <div className="tracing-heading-actions">
+        <SectionHeading
+          eyebrow="Distributed tracing · Tempo"
+          title="Trace analytics and span explorer"
+          headingId="tracing-heading"
+          description={data?.available
+            ? `${data.indexedTraceCount} seeded traces indexed in the last ${data.windowMinutes} minutes`
+            : data?.message ?? 'Connecting to Tempo...'}
+          actions={(
+            <>
             <StatusBadge active={Boolean(data?.available)} activeLabel="Tempo connected" inactiveLabel="Tempo warming up" />
             <button type="button" onClick={() => void seedTraces()} disabled={seeding}>
               {seeding ? 'Seeding...' : 'Seed 12 context traces'}
             </button>
-          </div>
-        </div>
+            </>
+          )}
+        />
 
         {(overview.error || error) && (
           <p className="error panel-notice" role="alert">{error || 'Trace analytics could not be loaded. The page will keep retrying.'}</p>
@@ -99,13 +99,12 @@ export function TracingDashboard({ model }: { model: TracingDashboardModel }) {
       <ContextPropagationLab analytics={data?.propagationAnalytics} trace={selectedTrace} />
 
       <section className="panel learning-panel" aria-labelledby="trace-waterfall-heading">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Trace · root span · parent / child span</p>
-            <h2 id="trace-waterfall-heading">Waterfall and span anatomy</h2>
-            <p>Select a trace and a span to inspect its identity and telemetry.</p>
-          </div>
-        </div>
+        <SectionHeading
+          eyebrow="Trace · root span · parent / child span"
+          title="Waterfall and span anatomy"
+          headingId="trace-waterfall-heading"
+          description="Select a trace and a span to inspect its identity and telemetry."
+        />
 
         <div className="trace-browser">
           <div className="trace-list" aria-label="Recent traces">
@@ -153,12 +152,10 @@ export function TracingDashboard({ model }: { model: TracingDashboardModel }) {
       </section>
 
       <section className="panel learning-panel">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Distributed tracing fundamentals</p>
-            <h2>Every requested concept, tied to live data</h2>
-          </div>
-        </div>
+        <SectionHeading
+          eyebrow="Distributed tracing fundamentals"
+          title="Every requested concept, tied to live data"
+        />
         <div className="tracing-concepts">
           <Concept title="Trace" value={selectedTrace ? `${selectedTrace.spans.length} related spans form one request journey.` : 'An end-to-end request journey across operations.'} />
           <Concept title="Trace ID" value={selectedTrace?.traceId ?? 'A shared 128-bit identifier correlates every span.'} code />
@@ -174,13 +171,11 @@ export function TracingDashboard({ model }: { model: TracingDashboardModel }) {
       </section>
 
       <section className="panel learning-panel">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">TraceQL</p>
-            <h2>Query cookbook</h2>
-            <p>Run these expressions in Grafana Explore against the provisioned Tempo data source.</p>
-          </div>
-        </div>
+        <SectionHeading
+          eyebrow="TraceQL"
+          title="Query cookbook"
+          description="Run these expressions in Grafana Explore against the provisioned Tempo data source."
+        />
         <QueryGrid queries={data?.queries ?? []} />
       </section>
     </>
@@ -194,13 +189,12 @@ function ContextPropagationLab({ analytics, trace }: { analytics?: TracePropagat
 
   return (
     <section className="panel learning-panel" aria-labelledby="propagation-heading">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Distributed context · W3C Trace Context</p>
-          <h2 id="propagation-heading">Context propagation across HTTP and gRPC</h2>
-          <p>Inspect the exact carrier values that preserve causality and selected baggage across process boundaries.</p>
-        </div>
-      </div>
+      <SectionHeading
+        eyebrow="Distributed context · W3C Trace Context"
+        title="Context propagation across HTTP and gRPC"
+        headingId="propagation-heading"
+        description="Inspect the exact carrier values that preserve causality and selected baggage across process boundaries."
+      />
 
       <div className="propagation-summary" aria-label="Context propagation analytics">
         <Summary label="Distributed traces" value={analytics?.propagatedTraceCount ?? '--'} detail="with remote context" />

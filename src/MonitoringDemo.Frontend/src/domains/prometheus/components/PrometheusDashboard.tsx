@@ -1,4 +1,5 @@
 import type { usePrometheusDashboard } from '@/domains/prometheus/hooks/usePrometheusDashboard';
+import { SectionHeading } from '@/shared/components/SectionHeading';
 import type { PrometheusOverview, PromQlExample, PromQlSeries } from '@/domains/prometheus/types';
 import { dateTime } from '@/shared/lib/formatters';
 
@@ -15,16 +16,13 @@ export function PrometheusDashboard({ model }: { model: PrometheusDashboardModel
 
   return (
     <section className="panel learning-panel prometheus-lab" aria-labelledby="prometheus-heading">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Prometheus lab</p>
-          <h2 id="prometheus-heading">Pull-based collection, storage, rules, and live analytics</h2>
-          <p>{statusText(data, overview.loading)}</p>
-        </div>
-        <button type="button" onClick={() => void seedPrometheus()} disabled={seeding}>
-          {seeding ? 'Seeding...' : 'Seed 240 observations'}
-        </button>
-      </div>
+      <SectionHeading
+        eyebrow="Prometheus lab"
+        title="Pull-based collection, storage, rules, and live analytics"
+        description={statusText(data, overview.loading)}
+        headingId="prometheus-heading"
+        actions={<button type="button" onClick={() => void seedPrometheus()} disabled={seeding}>{seeding ? 'Seeding...' : 'Seed 240 observations'}</button>}
+      />
 
       {message && <p className="notice panel-notice" role="status">{message}</p>}
       {overview.error && <p className="error panel-notice" role="alert">The overview API could not be loaded. Automatic retry is active.</p>}

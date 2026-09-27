@@ -53,56 +53,96 @@ public class BackgroundOrderSimulator : BackgroundService
         if (productCount == 0) return;
 
         var skip = Random.Shared.Next(0, productCount);
-        var product = await dbContext.Products.Skip(skip).FirstOrDefaultAsync(stoppingToken);
+        var product = await dbContext.Products
+            .OrderBy(item => item.Id)
+            .Skip(skip)
+            .FirstOrDefaultAsync(stoppingToken);
         
         if (product == null) return;
 
         using var activity = _activitySource.Source.StartActivity("SimulateOrder");
         var sw = Stopwatch.StartNew();
 
+        using var logScope = _logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["correlation_id"] = $"sim-{Guid.NewGuid():N}",
+            ["request_id"] = $"background-{Guid.NewGuid():N}",
+            ["trace_id"] = activity?.TraceId.ToString(),
+            ["span_id"] = activity?.SpanId.ToString(),
+            ["event_name"] = "background_order_processed",
+            ["product_id"] = product.Id,
+            ["product_category"] = product.Category,
+            ["worker"] = nameof(BackgroundOrderSimulator)
+        });
+
         _metrics.ActiveOrders.Add(1);
-
-        var quantity = Random.Shared.Next(1, 5);
-        bool isFailed = Random.Shared.NextDouble() < 0.10;
-        string status = isFailed ? "Failed" : "Completed";
-
-        var order = new Order
+        try
         {
-            ProductId = product.Id,
-            Quantity = quantity,
-            Total = product.Price * quantity,
-            Status = status,
-            CreatedAt = DateTime.UtcNow
-        };
+            var quantity = Random.Shared.Next(1, 5);
+            bool isFailed = Random.Shared.NextDouble() < 0.10;
+            string status = isFailed ? "Failed" : "Completed";
 
-        dbContext.Orders.Add(order);
-        var processingDelay = Random.Shared.NextDouble() < 0.20 ? Random.Shared.Next(500, 1500) : Random.Shared.Next(50, 200);
-        await Task.Delay(processingDelay, stoppingToken);
+            var order = new Order
+            {
+                ProductId = product.Id,
+                Quantity = quantity,
+                Total = product.Price * quantity,
+                Status = status,
+                CreatedAt = DateTime.UtcNow
+            };
 
-        await dbContext.SaveChangesAsync(stoppingToken);
+            dbContext.Orders.Add(order);
+            var processingDelay = Random.Shared.NextDouble() < 0.20 ? Random.Shared.Next(500, 1500) : Random.Shared.Next(50, 200);
+            await Task.Delay(processingDelay, stoppingToken);
 
-        sw.Stop();
-        _metrics.OrderProcessingDuration.Record(sw.ElapsedMilliseconds);
-        _metrics.OrdersCreated.Add(1);
+            await dbContext.SaveChangesAsync(stoppingToken);
 
-        activity?.SetTag("product.name", product.Name);
-        activity?.SetTag("order.status", order.Status);
-        activity?.SetTag("order.total", order.Total);
+            sw.Stop();
+            var metricTags = new TagList
+            {
+                { "order.status", status },
+                { "product.category", product.Category }
+            };
+            _metrics.OrderProcessingDuration.Record(sw.ElapsedMilliseconds, metricTags);
+            _metrics.OrdersCreated.Add(1, metricTags);
 
-        if (isFailed)
-        {
-            _metrics.OrdersFailed.Add(1);
-            _logger.LogError("Simulated order {OrderId} failed to process for product {ProductName}", order.Id, product.Name);
+            activity?.SetTag("product.name", product.Name);
+            activity?.SetTag("order.id", order.Id);
+            activity?.SetTag("order.status", order.Status);
+            activity?.SetTag("order.total", order.Total);
+
+            if (isFailed)
+            {
+                _metrics.OrdersFailed.Add(1, metricTags);
+                _logger.LogError(
+                    new EventId(5002, "SimulatedOrderFailed"),
+                    "Simulated order {order_id} failed for product {product_name} in {duration_ms} ms",
+                    order.Id,
+                    product.Name,
+                    sw.ElapsedMilliseconds);
+            }
+            else if (sw.ElapsedMilliseconds > 500)
+            {
+                _logger.LogWarning(
+                    new EventId(5001, "SimulatedOrderSlow"),
+                    "Simulated order {order_id} processed slowly in {duration_ms} ms for product {product_name}",
+                    order.Id,
+                    sw.ElapsedMilliseconds,
+                    product.Name);
+            }
+            else
+            {
+                _logger.LogInformation(
+                    new EventId(5000, "SimulatedOrderCompleted"),
+                    "Simulated order {order_id} processed successfully for product {product_name} in {duration_ms} ms",
+                    order.Id,
+                    product.Name,
+                    sw.ElapsedMilliseconds);
+            }
         }
-        else if (sw.ElapsedMilliseconds > 500)
+        finally
         {
-            _logger.LogWarning("Simulated order {OrderId} processed slowly ({ElapsedMs}ms) for product {ProductName}", order.Id, sw.ElapsedMilliseconds, product.Name);
+            _metrics.ActiveOrders.Add(-1);
         }
-        else
-        {
-            _logger.LogInformation("Simulated order {OrderId} processed successfully for product {ProductName}", order.Id, product.Name);
-        }
-
-        _metrics.ActiveOrders.Add(-1);
     }
 }

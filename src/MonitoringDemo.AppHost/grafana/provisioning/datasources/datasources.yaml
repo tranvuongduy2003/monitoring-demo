@@ -1,6 +1,7 @@
 apiVersion: 1
 datasources:
   - name: Prometheus
+    uid: prometheus
     type: prometheus
     access: proxy
     url: http://host.docker.internal:9090
@@ -8,4 +9,12 @@ datasources:
     jsonData:
       httpMethod: POST
       timeInterval: 5s
+    editable: false
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://host.docker.internal:3100
+    jsonData:
+      maxLines: 1000
     editable: false

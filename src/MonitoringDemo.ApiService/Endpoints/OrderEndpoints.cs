@@ -28,47 +28,91 @@ public static class OrderEndpoints
             using var activity = activitySource.Source.StartActivity("CreateOrder");
             var sw = Stopwatch.StartNew();
 
+            if (req.Quantity is < 1 or > 100)
+            {
+                logger.LogWarning(
+                    new EventId(4001, "OrderValidationFailed"),
+                    "Order validation failed for product {product_id}: quantity {quantity} is outside 1-100",
+                    req.ProductId,
+                    req.Quantity);
+                return Results.BadRequest(new { error = "Quantity must be between 1 and 100." });
+            }
+
             var product = await dbContext.Products.FindAsync(req.ProductId);
-            if (product == null) return Results.NotFound();
+            if (product == null)
+            {
+                logger.LogWarning(
+                    new EventId(4002, "ProductNotFound"),
+                    "Order rejected because product {product_id} was not found",
+                    req.ProductId);
+                return Results.NotFound();
+            }
+
+            using var logScope = logger.BeginScope(new Dictionary<string, object?>
+            {
+                ["event_name"] = "order_processed",
+                ["product_id"] = product.Id,
+                ["product_category"] = product.Category
+            });
 
             metrics.ActiveOrders.Add(1);
-
-            bool isFailed = Random.Shared.NextDouble() < 0.05;
-            string status = isFailed ? "Failed" : "Completed";
-
-            var order = new Order
+            try
             {
-                ProductId = product.Id,
-                Quantity = req.Quantity,
-                Total = product.Price * req.Quantity,
-                Status = status,
-                CreatedAt = DateTime.UtcNow
-            };
+                bool isFailed = Random.Shared.NextDouble() < 0.05;
+                string status = isFailed ? "Failed" : "Completed";
 
-            dbContext.Orders.Add(order);
-            await dbContext.SaveChangesAsync();
+                var order = new Order
+                {
+                    ProductId = product.Id,
+                    Quantity = req.Quantity,
+                    Total = product.Price * req.Quantity,
+                    Status = status,
+                    CreatedAt = DateTime.UtcNow
+                };
 
-            sw.Stop();
-            metrics.OrderProcessingDuration.Record(sw.ElapsedMilliseconds);
-            metrics.OrdersCreated.Add(1);
+                dbContext.Orders.Add(order);
+                await dbContext.SaveChangesAsync();
 
-            activity?.SetTag("product.name", product.Name);
-            activity?.SetTag("order.status", order.Status);
-            activity?.SetTag("order.total", order.Total);
+                sw.Stop();
+                var metricTags = new TagList
+                {
+                    { "order.status", status },
+                    { "product.category", product.Category }
+                };
+                metrics.OrderProcessingDuration.Record(sw.ElapsedMilliseconds, metricTags);
+                metrics.OrdersCreated.Add(1, metricTags);
 
-            if (isFailed)
-            {
-                metrics.OrdersFailed.Add(1);
-                logger.LogError("Order {OrderId} failed to process for product {ProductName}", order.Id, product.Name);
+                activity?.SetTag("product.name", product.Name);
+                activity?.SetTag("order.id", order.Id);
+                activity?.SetTag("order.status", order.Status);
+                activity?.SetTag("order.total", order.Total);
+
+                if (isFailed)
+                {
+                    metrics.OrdersFailed.Add(1, metricTags);
+                    logger.LogError(
+                        new EventId(4004, "OrderFailed"),
+                        "Order {order_id} failed to process for product {product_name} in {duration_ms} ms",
+                        order.Id,
+                        product.Name,
+                        sw.ElapsedMilliseconds);
+                }
+                else
+                {
+                    logger.LogInformation(
+                        new EventId(4003, "OrderCompleted"),
+                        "Order {order_id} processed successfully for product {product_name} in {duration_ms} ms",
+                        order.Id,
+                        product.Name,
+                        sw.ElapsedMilliseconds);
+                }
+
+                return Results.Created($"/api/orders/{order.Id}", order);
             }
-            else
+            finally
             {
-                logger.LogInformation("Order {OrderId} processed successfully for product {ProductName}", order.Id, product.Name);
+                metrics.ActiveOrders.Add(-1);
             }
-
-            metrics.ActiveOrders.Add(-1);
-
-            return Results.Created($"/api/orders/{order.Id}", order);
         });
 
         group.MapGet("/stats", async (AppDbContext dbContext) =>

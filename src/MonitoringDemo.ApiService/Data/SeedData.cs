@@ -17,6 +17,7 @@ public static class SeedData
         {
             var categories = new[] { "Electronics", "Tools", "Software", "Hardware", "Accessories" };
             var products = new List<Product>();
+            var random = new Random(20260924);
             
             for (int i = 1; i <= 20; i++)
             {
@@ -24,8 +25,8 @@ public static class SeedData
                 {
                     Name = $"Product {i}",
                     Category = categories[i % categories.Length],
-                    Price = (decimal)(Random.Shared.NextDouble() * 100 + 10),
-                    Stock = Random.Shared.Next(10, 100)
+                    Price = decimal.Round((decimal)(random.NextDouble() * 100 + 10), 2),
+                    Stock = random.Next(10, 100)
                 });
             }
             
@@ -37,12 +38,13 @@ public static class SeedData
         {
             var products = await context.Products.ToListAsync();
             var orders = new List<Order>();
+            var random = new Random(20260924);
             
             for (int i = 0; i < 50; i++)
             {
-                var product = products[Random.Shared.Next(products.Count)];
-                var quantity = Random.Shared.Next(1, 6);
-                var statusRand = Random.Shared.Next(100);
+                var product = products[random.Next(products.Count)];
+                var quantity = random.Next(1, 6);
+                var statusRand = random.Next(100);
                 string status = statusRand < 70 ? "Completed" : (statusRand < 90 ? "Pending" : "Failed");
                 
                 orders.Add(new Order
@@ -51,7 +53,7 @@ public static class SeedData
                     Quantity = quantity,
                     Total = product.Price * quantity,
                     Status = status,
-                    CreatedAt = DateTime.UtcNow.AddDays(-Random.Shared.Next(0, 30)).AddHours(-Random.Shared.Next(0, 24))
+                    CreatedAt = DateTime.UtcNow.AddHours(-random.Next(0, 24 * 30))
                 });
             }
             

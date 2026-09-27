@@ -25,3 +25,27 @@ export interface OrderStats {
   averageOrderValue: number;
   ordersLastHour: number;
 }
+
+export interface LogQueryExample {
+  title: string;
+  query: string;
+  purpose: string;
+}
+
+export interface LogAnalytics {
+  available: boolean;
+  windowMinutes: number;
+  totalLogs: number;
+  byLevel: Record<string, number>;
+  queries: LogQueryExample[];
+  message?: string;
+}
+
+export interface LogDemoResult {
+  message: string;
+  level: string;
+  correlationId: string;
+  requestId: string;
+  traceId: string;
+  spanId: string;
+}

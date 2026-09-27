@@ -1,6 +1,6 @@
 # 📊 MonitoringDemo — End-to-End Observability with .NET Aspire
 
-A monitoring demo featuring a **.NET Minimal API** backend with OpenTelemetry instrumentation, a lean **React** status page, **PostgreSQL**, and self-hosted **Prometheus** + **Grafana** — all orchestrated by **Aspire 13** on **.NET 10**.
+A monitoring demo featuring a **.NET Minimal API** backend with OpenTelemetry instrumentation, a React learning dashboard, **PostgreSQL**, and self-hosted **Prometheus**, **Loki**, and **Grafana** — all orchestrated by **Aspire 13** on **.NET 10**.
 
 ## Architecture
 
@@ -33,7 +33,9 @@ A monitoring demo featuring a **.NET Minimal API** backend with OpenTelemetry in
 
 - **OpenTelemetry Instrumentation** — Custom metrics (counters, histograms, gauges), structured logs, and distributed traces
 - **Background Order Simulator** — Generates realistic telemetry data every 2-5 seconds for demo purposes
-- **Self-Hosted Monitoring Stack** — Prometheus scrapes `/metrics`, Grafana auto-provisions dashboards
+- **Self-Hosted Monitoring Stack** — Prometheus stores metrics, Loki stores OTLP logs, and Grafana auto-provisions both data sources and dashboards
+- **Correlated Logging Lab** — Structured attributes, scopes, log levels, exceptions, correlation/request IDs, and trace/span IDs
+- **Seeded Log Analytics** — Repeatable startup events across every log level plus ready-to-run LogQL queries
 - **Lean status page** — Live order statistics and recent activity, with detailed visualization left to Grafana
 - **Aspire Orchestration** — Single `dotnet run` starts everything: database, monitoring, API, and frontend
 
@@ -73,6 +75,7 @@ paired with the AppHost SDK, so a separately installed global Aspire CLI is not 
 Aspire will automatically:
 - Start PostgreSQL and seed demo data
 - Launch Prometheus (scraping API metrics)
+- Launch Loki (receiving OpenTelemetry logs)
 - Launch Grafana (pre-provisioned dashboards)
 - Start the .NET API with OpenTelemetry
 - Start the React dev server
@@ -86,6 +89,7 @@ Aspire will automatically:
 | **API Service** | `http://localhost:5000` | — |
 | **API Metrics** | `http://localhost:5000/metrics` | — |
 | **Prometheus** | `http://localhost:9090` | — |
+| **Loki API** | `http://localhost:3100/ready` | — |
 | **Grafana** | `http://localhost:3000` | admin / admin |
 | **pgAdmin** | Via Aspire Dashboard link | — |
 
@@ -98,6 +102,8 @@ Aspire will automatically:
 | `GET` | `/api/orders?limit=20` | Recent orders |
 | `POST` | `/api/orders` | Create order `{productId, quantity}` |
 | `GET` | `/api/orders/stats` | Dashboard statistics |
+| `GET` | `/api/logging/analytics?minutes=60` | Live Loki volume by level and query catalog |
+| `POST` | `/api/logging/demo?level=Warning&includeException=true` | Emit a correlated teaching event |
 | `GET` | `/metrics` | Prometheus metrics |
 | `GET` | `/health` | Health check |
 
@@ -114,8 +120,13 @@ Aspire will automatically:
 - Auto-instrumented: ASP.NET Core, HTTP client, EF Core
 
 ### Logs
-- Structured logging with scopes via ILogger
-- Exported via OpenTelemetry to Aspire Dashboard
+- Structured and unstructured examples via `ILogger`
+- Request scopes with correlation ID, request ID, trace ID, and span ID
+- Exception records with stack traces and stable event IDs
+- Exported via OpenTelemetry to both Aspire Dashboard and Loki
+- Queried with LogQL in the provisioned `MonitoringDemo - Logs & Correlation` Grafana dashboard
+
+See [LEARNING_REPORT.md](LEARNING_REPORT.md) for the guided lesson, architecture, query cookbook, and exercises.
 
 ## 🎨 Frontend
 

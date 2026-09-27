@@ -1,0 +1,89 @@
+{
+  "uid": "monitoring-demo-logs",
+  "title": "MonitoringDemo - Logs & Correlation",
+  "tags": ["logs", "loki", "learning"],
+  "refresh": "5s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Log volume by level",
+      "description": "A LogQL metric query built from log events.",
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "expr": "sum by (severity_text) (count_over_time({service_name=\"MonitoringDemo.ApiService\"} | severity_text != `` [$__auto]))",
+          "legendFormat": "{{severity_text}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Errors and critical events",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "sum(count_over_time({service_name=\"MonitoringDemo.ApiService\"} | severity_text =~ `(?i)error|critical` [$__range]))"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "logs",
+      "title": "Correlated application logs",
+      "description": "Expand a row to inspect correlation_id, request_id, trace_id, span_id, event_name, and business attributes.",
+      "gridPos": { "h": 13, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "expr": "{service_name=\"MonitoringDemo.ApiService\"}"
+        }
+      ],
+      "options": { "showTime": true, "showLabels": false, "showCommonLabels": false, "wrapLogMessage": true, "prettifyLogMessage": false, "enableLogDetails": true, "sortOrder": "Descending", "dedupStrategy": "none" }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Top event names (last 5 minutes)",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 21 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "sum by (event_name) (count_over_time({service_name=\"MonitoringDemo.ApiService\"} | event_name != `` [5m]))"
+        }
+      ],
+      "transformations": [{ "id": "seriesToRows", "options": {} }]
+    },
+    {
+      "id": 5,
+      "type": "logs",
+      "title": "Slow operations (> 500 ms)",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 21 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "expr": "{service_name=\"MonitoringDemo.ApiService\"} | duration_ms > 500"
+        }
+      ],
+      "options": { "showTime": true, "wrapLogMessage": true, "enableLogDetails": true, "sortOrder": "Descending", "dedupStrategy": "none" }
+    }
+  ],
+  "schemaVersion": 41,
+  "version": 1
+}

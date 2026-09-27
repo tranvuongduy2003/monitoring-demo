@@ -4,7 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
 namespace Microsoft.Extensions.Hosting;
@@ -27,13 +30,34 @@ public static class Extensions
 
     public static IHostApplicationBuilder ConfigureOpenTelemetry(this IHostApplicationBuilder builder)
     {
+        var hasAspireOtlpEndpoint =
+            !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+        var hasLokiOtlpEndpoint = Uri.TryCreate(
+            builder.Configuration["LOKI_OTLP_ENDPOINT"],
+            UriKind.Absolute,
+            out var lokiOtlpEndpoint);
+
         builder.Logging.AddOpenTelemetry(logging =>
         {
             logging.IncludeFormattedMessage = true;
             logging.IncludeScopes = true;
+
+            if (hasLokiOtlpEndpoint && lokiOtlpEndpoint is not null)
+            {
+                logging.AddOtlpExporter(exporter =>
+                {
+                    exporter.Endpoint = lokiOtlpEndpoint;
+                    exporter.Protocol = OtlpExportProtocol.HttpProtobuf;
+                });
+            }
+            else if (hasAspireOtlpEndpoint)
+            {
+                logging.AddOtlpExporter();
+            }
         });
 
         builder.Services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource.AddService(builder.Environment.ApplicationName))
             .WithMetrics(metrics =>
             {
                 metrics.AddAspNetCoreInstrumentation()
@@ -41,18 +65,23 @@ public static class Extensions
                     .AddRuntimeInstrumentation()
                     .AddMeter("MonitoringDemo.ApiService")
                     .AddPrometheusExporter();
+
+                if (hasAspireOtlpEndpoint)
+                {
+                    metrics.AddOtlpExporter();
+                }
             })
             .WithTracing(tracing =>
             {
                 tracing.AddSource("MonitoringDemo.ApiService")
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation();
-            });
 
-        if (!string.IsNullOrEmpty(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
-        {
-            builder.Services.AddOpenTelemetry().UseOtlpExporter();
-        }
+                if (hasAspireOtlpEndpoint)
+                {
+                    tracing.AddOtlpExporter();
+                }
+            });
 
         return builder;
     }

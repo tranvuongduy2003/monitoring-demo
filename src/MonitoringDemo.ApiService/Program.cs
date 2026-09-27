@@ -1,5 +1,6 @@
 using MonitoringDemo.ApiService.Data;
 using MonitoringDemo.ApiService.Endpoints;
+using MonitoringDemo.ApiService.Middleware;
 using MonitoringDemo.ApiService.Services;
 using MonitoringDemo.ApiService.Telemetry;
 
@@ -12,6 +13,8 @@ builder.AddNpgsqlDbContext<AppDbContext>("monitoringdb");
 builder.Services.AddSingleton<AppMetrics>();
 builder.Services.AddSingleton<AppActivitySource>();
 builder.Services.AddHostedService<BackgroundOrderSimulator>();
+builder.Services.AddHostedService<LoggingSeedService>();
+builder.Services.AddHttpClient<LokiQueryService>();
 
 builder.Services.AddCors(options =>
 {
@@ -22,10 +25,12 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 app.UseCors("AllowAll");
+app.UseMiddleware<LogContextMiddleware>();
 app.MapDefaultEndpoints();
 
 app.MapProductEndpoints();
 app.MapOrderEndpoints();
+app.MapLoggingEndpoints();
 
 try 
 {

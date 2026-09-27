@@ -4,6 +4,11 @@ var postgres = builder.AddPostgres("postgres");
 
 var monitoringdb = postgres.AddDatabase("monitoringdb");
 
+var loki = builder.AddContainer("loki", "grafana/loki", "3.6.3")
+    .WithBindMount("loki", "/etc/loki", isReadOnly: true)
+    .WithHttpEndpoint(port: 3100, targetPort: 3100, name: "http")
+    .WithArgs("-config.file=/etc/loki/loki-config.yaml");
+
 var prometheus = builder.AddContainer("prometheus", "prom/prometheus", "latest")
     .WithBindMount("prometheus", "/etc/prometheus", isReadOnly: true)
     .WithHttpEndpoint(port: 9090, targetPort: 9090, name: "http")
@@ -16,11 +21,15 @@ var grafana = builder.AddContainer("grafana", "grafana/grafana", "latest")
     .WithEnvironment("GF_SECURITY_ADMIN_USER", "admin")
     .WithEnvironment("GF_SECURITY_ADMIN_PASSWORD", "admin")
     .WithEnvironment("GF_USERS_ALLOW_SIGN_UP", "false")
-    .WaitFor(prometheus);
+    .WaitFor(prometheus)
+    .WaitFor(loki);
 
 var apiService = builder.AddProject<Projects.MonitoringDemo_ApiService>("apiservice")
     .WithReference(monitoringdb)
+    .WithEnvironment("LOKI_OTLP_ENDPOINT", "http://localhost:3100/otlp/v1/logs")
+    .WithEnvironment("Loki__BaseUrl", "http://localhost:3100")
     .WaitFor(monitoringdb)
+    .WaitFor(loki)
     .WithHttpEndpoint(port: 5000);
 
 var frontend = builder.AddViteApp("frontend", "../MonitoringDemo.Frontend")

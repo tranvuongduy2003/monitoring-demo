@@ -65,6 +65,7 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 - Live Prometheus architecture lab covering pull collection, scrape intervals, targets, jobs, instances, exporters, service discovery, TSDB retention, and rules
 - Live Fundamental PromQL lab covering metric selection, label filtering, instant and range vectors, `sum`, `avg`, `min`, `max`, `count`, `rate`, `increase`, `by`, `without`, and `histogram_quantile`
 - Live distributed tracing lab covering traces, trace/span IDs, roots, parent-child relationships, durations, attributes, events, statuses, waterfalls, and TraceQL
+- Live context propagation lab covering distributed context, W3C Trace Context, `traceparent`, `tracestate`, HTTP headers, gRPC metadata, and fundamental baggage
 - Provisioned Grafana data sources and dashboards
 - Background order simulation, repeatable metric/trace seed endpoints, startup trace scenarios, and continuous bounded metric seeding so every visualization has test data
 - File-based target discovery plus provisioned recording and alerting rules
@@ -138,12 +139,6 @@ src/
 dotnet build MonitoringDemo.slnx
 npm --prefix src/MonitoringDemo.Frontend run build
 ```
-
-## Distributed tracing lab
-
-The API seeds successful, slow, and failed checkout traces at startup. Each trace contains nested validation, inventory, database, payment, provider, and messaging spans with bounded attributes, timestamped events, explicit status, and realistic duration differences. The **Seed 12 traces** button exports another repeatable batch through OpenTelemetry.
-
-The tracing panel queries Tempo directly with TraceQL, expands recent results through the trace-by-ID API, calculates trace/span analytics, and renders a selectable waterfall. Tempo may need several seconds to index a newly exported batch; the frontend polls automatically.
 
 ## License
 

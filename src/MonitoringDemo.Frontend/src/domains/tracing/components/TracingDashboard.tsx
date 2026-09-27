@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { useTracingDashboard } from '@/domains/tracing/hooks/useTracingDashboard';
-import type { TraceDetail, TraceSpan } from '@/domains/tracing/types';
+import type {
+  TraceDetail,
+  TracePropagationAnalytics,
+  TracePropagationHop,
+  TraceSpan,
+} from '@/domains/tracing/types';
 import { QueryGrid } from '@/shared/components/QueryGrid';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 
@@ -47,7 +52,7 @@ export function TracingDashboard({ model }: { model: TracingDashboardModel }) {
           <div className="tracing-heading-actions">
             <StatusBadge active={Boolean(data?.available)} activeLabel="Tempo connected" inactiveLabel="Tempo warming up" />
             <button type="button" onClick={() => void seedTraces()} disabled={seeding}>
-              {seeding ? 'Seeding...' : 'Seed 12 traces'}
+              {seeding ? 'Seeding...' : 'Seed 12 context traces'}
             </button>
           </div>
         </div>
@@ -90,6 +95,8 @@ export function TracingDashboard({ model }: { model: TracingDashboardModel }) {
           </div>
         </div>
       </section>
+
+      <ContextPropagationLab analytics={data?.propagationAnalytics} trace={selectedTrace} />
 
       <section className="panel learning-panel" aria-labelledby="trace-waterfall-heading">
         <div className="section-heading">
@@ -178,6 +185,138 @@ export function TracingDashboard({ model }: { model: TracingDashboardModel }) {
       </section>
     </>
   );
+}
+
+function ContextPropagationLab({ analytics, trace }: { analytics?: TracePropagationAnalytics; trace?: TraceDetail }) {
+  const hops = trace?.propagation?.hops ?? [];
+  const example = hops[0];
+  const traceParent = parseTraceParent(example?.traceParent ?? trace?.propagation?.traceParent ?? '');
+
+  return (
+    <section className="panel learning-panel" aria-labelledby="propagation-heading">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Distributed context · W3C Trace Context</p>
+          <h2 id="propagation-heading">Context propagation across HTTP and gRPC</h2>
+          <p>Inspect the exact carrier values that preserve causality and selected baggage across process boundaries.</p>
+        </div>
+      </div>
+
+      <div className="propagation-summary" aria-label="Context propagation analytics">
+        <Summary label="Distributed traces" value={analytics?.propagatedTraceCount ?? '--'} detail="with remote context" />
+        <Summary label="Propagation hops" value={analytics?.totalHops ?? '--'} detail={`${analytics?.successfulHops ?? 0} valid continuities`} />
+        <Summary label="Continuity" value={analytics ? `${analytics.contextContinuityPercent.toFixed(0)}%` : '--'} detail="trace + parent IDs match" />
+        <Summary label="traceparent" value={analytics?.traceParentHeaderCount ?? '--'} detail="headers / metadata" />
+        <Summary label="tracestate" value={analytics?.traceStateHeaderCount ?? '--'} detail="vendor state carriers" />
+        <Summary label="Baggage items" value={analytics?.baggageItemCount ?? '--'} detail="received key/value pairs" />
+      </div>
+
+      <div className="propagation-content">
+        <div>
+          <h3>Context propagation</h3>
+          <div className="context-flow" aria-label="Inject and extract distributed context flow">
+            <FlowNode title="Caller activity" detail="Current trace + client span" />
+            <span aria-hidden="true">→</span>
+            <FlowNode title="Inject" detail="Write W3C fields to carrier" />
+            <span aria-hidden="true">→</span>
+            <FlowNode title="HTTP / gRPC" detail="Cross the process boundary" />
+            <span aria-hidden="true">→</span>
+            <FlowNode title="Extract" detail="Parse a remote parent" />
+            <span aria-hidden="true">→</span>
+            <FlowNode title="Server activity" detail="Same trace, child span" />
+          </div>
+
+          <div className="transport-grid">
+            {hops.map(hop => <TransportCard key={hop.receiverSpanId} hop={hop} />)}
+            {!hops.length && <p className="muted">Select an indexed seeded trace to inspect its HTTP and gRPC carriers.</p>}
+          </div>
+        </div>
+
+        <div>
+          <h3>Transport analytics</h3>
+          <div className="table-wrap compact-table">
+            <table>
+              <thead><tr><th>Carrier</th><th>Hops</th><th>Valid</th><th>Receiver avg</th></tr></thead>
+              <tbody>
+                {analytics?.transports.map(transport => (
+                  <tr key={transport.transport}>
+                    <td><strong>{transportLabel(transport.transport)}</strong></td>
+                    <td>{transport.hopCount}</td>
+                    <td>{transport.successfulHopCount}</td>
+                    <td>{duration(transport.averageReceiverDurationMilliseconds)}</td>
+                  </tr>
+                ))}
+                {!analytics?.transports.length && <tr><td colSpan={4} className="empty">Waiting for propagation spans.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="w3c-lab">
+        <article className="carrier-card traceparent-card">
+          <h3>traceparent</h3>
+          <p>The required W3C field carries version, trace identity, immediate parent identity, and sampling flags.</p>
+          <code className="carrier-value">{example?.traceParent || '00-<trace-id>-<parent-span-id>-01'}</code>
+          <div className="traceparent-parts">
+            <CarrierPart label="Version" value={traceParent.version} />
+            <CarrierPart label="Trace ID" value={traceParent.traceId} />
+            <CarrierPart label="Parent span ID" value={traceParent.parentId} />
+            <CarrierPart label="Flags" value={traceParent.flags} />
+          </div>
+        </article>
+
+        <article className="carrier-card">
+          <h3>tracestate</h3>
+          <p>The optional W3C field forwards ordered vendor-specific state without changing the trace identity.</p>
+          <code className="carrier-value">{example?.traceState || 'demo=seed-N,sample=full'}</code>
+          <small>Forward unchanged unless a participating vendor updates its own list member.</small>
+        </article>
+
+        <article className="carrier-card baggage-card">
+          <h3>Fundamental Baggage</h3>
+          <p>Application context travels beside trace context. Baggage is not automatically a span attribute, so this demo copies only selected safe keys for analysis.</p>
+          <div className="baggage-chips">
+            {(analytics?.baggageKeys ?? []).map(item => (
+              <code key={item.key}>{item.key}={item.sampleValue} <small>×{item.occurrences}</small></code>
+            ))}
+            {!analytics?.baggageKeys.length && <span className="muted">Waiting for baggage analytics.</span>}
+          </div>
+        </article>
+      </div>
+
+      <div className="propagation-concepts">
+        <Concept title="Distributed context" value="Trace identity, vendor state, and application baggage that accompany work between services." />
+        <Concept title="Context propagation" value="Inject context into a carrier before send; extract it as a remote parent before receive." />
+        <Concept title="W3C Trace Context" value="The interoperable traceparent and tracestate formats used by the seeded carriers." />
+        <Concept title="HTTP propagation" value="Lowercase W3C fields travel as HTTP request headers to the inventory API." />
+        <Concept title="gRPC propagation" value="The same lowercase fields travel as gRPC metadata to the payment API." />
+        <Concept title="Fundamental Baggage" value="Small, bounded application key/value pairs propagate separately from span attributes." />
+      </div>
+    </section>
+  );
+}
+
+function FlowNode({ title, detail }: { title: string; detail: string }) {
+  return <div><strong>{title}</strong><small>{detail}</small></div>;
+}
+
+function TransportCard({ hop }: { hop: TracePropagationHop }) {
+  return (
+    <article className="transport-card">
+      <div>
+        <strong>{transportLabel(hop.transport)} propagation</strong>
+        <Status status={hop.contextValid ? 'Ok' : 'Error'} />
+      </div>
+      <span>{hop.senderName} → {hop.receiverService} / {hop.receiverName}</span>
+      <code>{hop.transport === 'grpc' ? 'metadata' : 'headers'}: traceparent · tracestate · baggage</code>
+      <small>Parent {shortId(hop.senderSpanId)} → child {shortId(hop.receiverSpanId)}</small>
+    </article>
+  );
+}
+
+function CarrierPart({ label, value }: { label: string; value: string }) {
+  return <span><small>{label}</small><code>{value || '—'}</code></span>;
 }
 
 function Summary({ label, value, detail }: { label: string; value: string | number; detail: string }) {
@@ -292,6 +431,19 @@ function relationship(trace?: TraceDetail, span?: TraceSpan): string {
   const parent = trace.spans.find(candidate => candidate.spanId === span.parentSpanId);
   const childCount = trace.spans.filter(candidate => candidate.parentSpanId === span.spanId).length;
   return `${parent ? `Parent: ${parent.name}` : 'Root (no parent)'} · ${childCount} direct child${childCount === 1 ? '' : 'ren'}`;
+}
+
+function parseTraceParent(value: string) {
+  const [version = '', traceId = '', parentId = '', flags = ''] = value.split('-');
+  return { version, traceId, parentId, flags };
+}
+
+function transportLabel(transport: string): string {
+  return transport.toLowerCase() === 'grpc' ? 'gRPC metadata' : 'HTTP headers';
+}
+
+function shortId(value: string): string {
+  return value.length > 8 ? `${value.slice(0, 8)}…` : value;
 }
 
 function duration(milliseconds: number): string {

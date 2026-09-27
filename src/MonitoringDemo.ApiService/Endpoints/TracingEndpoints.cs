@@ -27,7 +27,7 @@ public static class TracingEndpoints
                 seeded = result.Requested,
                 exported = result.TraceIds.Count,
                 traceIds = result.TraceIds,
-                message = "Traces were exported through OpenTelemetry. Tempo search usually indexes them within a few seconds."
+                message = "Context-propagation traces were exported through OpenTelemetry. Tempo search usually indexes them within a few seconds."
             });
         });
     }

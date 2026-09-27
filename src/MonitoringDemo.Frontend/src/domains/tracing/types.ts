@@ -5,6 +5,7 @@ export interface TraceOverview {
   windowMinutes: number;
   indexedTraceCount: number;
   analytics: TraceAnalytics;
+  propagationAnalytics: TracePropagationAnalytics;
   traces: TraceDetail[];
   queries: QueryExample[];
   message?: string;
@@ -30,6 +31,7 @@ export interface TraceDetail {
   durationMilliseconds: number;
   status: string;
   spans: TraceSpan[];
+  propagation: TracePropagation;
 }
 
 export interface TraceSpan {
@@ -62,6 +64,52 @@ export interface TraceOperation {
   errorCount: number;
   averageDurationMilliseconds: number;
   p95DurationMilliseconds: number;
+}
+
+export interface TracePropagationAnalytics {
+  propagatedTraceCount: number;
+  totalHops: number;
+  successfulHops: number;
+  traceParentHeaderCount: number;
+  traceStateHeaderCount: number;
+  baggageItemCount: number;
+  contextContinuityPercent: number;
+  transports: PropagationTransportAnalytics[];
+  baggageKeys: PropagatedBaggageKey[];
+}
+
+export interface PropagationTransportAnalytics {
+  transport: string;
+  hopCount: number;
+  successfulHopCount: number;
+  averageReceiverDurationMilliseconds: number;
+}
+
+export interface PropagatedBaggageKey {
+  key: string;
+  occurrences: number;
+  sampleValue: string;
+}
+
+export interface TracePropagation {
+  traceParent: string;
+  traceState: string;
+  baggage: Record<string, string>;
+  hops: TracePropagationHop[];
+}
+
+export interface TracePropagationHop {
+  transport: string;
+  senderSpanId: string;
+  receiverSpanId: string;
+  senderName: string;
+  receiverName: string;
+  receiverService: string;
+  durationMilliseconds: number;
+  traceParent: string;
+  traceState: string;
+  baggage: Record<string, string>;
+  contextValid: boolean;
 }
 
 export interface TraceSeedResult {

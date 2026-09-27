@@ -34,8 +34,10 @@ public sealed class TempoQueryService
         new("Errors", "{ resource.service.name = \"MonitoringDemo.ApiService\" && status = error }", "Find traces containing an error span."),
         new("Slow spans", "{ resource.service.name = \"MonitoringDemo.ApiService\" && duration > 500ms }", "Locate latency outliers."),
         new("Checkout roots", "{ rootName = \"CheckoutOrder\" }", "Select traces by their root span name."),
-        new("Parent followed by child", "{ name = \"ChargePayment\" } >> { name = \"POST /authorize\" }", "Use structural operators to query a parent/descendant path."),
-        new("Attribute filter", "{ span.payment.method = \"card\" }", "Filter spans using a business attribute.")
+        new("Parent followed by child", "{ name = \"gRPC PaymentService/Authorize\" } >> { name = \"PaymentService/Authorize\" }", "Use structural operators to query a client/remote-server path."),
+        new("HTTP propagation", "{ span.demo.propagation.transport = \"http\" && span.demo.propagation.role = \"extractor\" }", "Find remote HTTP server spans which extracted W3C context."),
+        new("gRPC propagation", "{ span.demo.propagation.transport = \"grpc\" && span.demo.propagation.role = \"extractor\" }", "Find gRPC server spans which extracted metadata."),
+        new("Baggage", "{ span.demo.baggage.tenant.id != nil }", "Find spans where selected baggage was intentionally copied to attributes.")
     ];
 
     public async Task<TraceOverview> GetOverviewAsync(int minutes, CancellationToken cancellationToken)
@@ -62,6 +64,7 @@ public sealed class TempoQueryService
                 minutes,
                 summaries.Count,
                 BuildAnalytics(summaries, traces),
+                BuildPropagationAnalytics(traces),
                 traces,
                 QueryExamples,
                 null);
@@ -157,16 +160,17 @@ public sealed class TempoQueryService
                     var startedAt = ParseUnixNanoseconds(String(span, "startTimeUnixNano"));
                     var endedAt = ParseUnixNanoseconds(String(span, "endTimeUnixNano"));
                     var spanDuration = Math.Max(0, (endedAt - startedAt).TotalMilliseconds);
+                    var attributes = ReadAttributes(span);
                     spans.Add(new TraceSpan(
                         NormalizeId(String(span, "spanId")) ?? string.Empty,
                         NormalizeId(String(span, "parentSpanId")),
                         String(span, "name") ?? "unnamed span",
-                        serviceName,
+                        attributes.GetValueOrDefault("demo.service.name", serviceName),
                         ReadKind(span),
                         startedAt,
                         spanDuration,
                         ReadStatus(span),
-                        ReadAttributes(span),
+                        attributes,
                         ReadEvents(span)));
                 }
             }
@@ -186,7 +190,8 @@ public sealed class TempoQueryService
             summary.StartedAt,
             traceDuration,
             orderedSpans.Any(span => span.Status.Equals("Error", StringComparison.OrdinalIgnoreCase)) ? "Error" : rootSpan?.Status ?? "Unset",
-            orderedSpans);
+            orderedSpans,
+            BuildTracePropagation(summary.TraceId, orderedSpans));
     }
 
     private static TraceAnalytics BuildAnalytics(
@@ -232,6 +237,89 @@ public sealed class TempoQueryService
             durationBuckets,
             operations);
     }
+
+    private static TracePropagationAnalytics BuildPropagationAnalytics(IReadOnlyList<TraceDetail> traces)
+    {
+        var hops = traces.SelectMany(trace => trace.Propagation.Hops).ToArray();
+        var transports = hops
+            .GroupBy(hop => hop.Transport, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new PropagationTransportAnalytics(
+                group.Key,
+                group.Count(),
+                group.Count(hop => hop.ContextValid),
+                group.Average(hop => hop.DurationMilliseconds)))
+            .OrderBy(item => item.Transport, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var baggageKeys = hops
+            .SelectMany(hop => hop.Baggage)
+            .GroupBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new PropagatedBaggageKey(
+                group.Key,
+                group.Count(),
+                group.Select(item => item.Value).FirstOrDefault() ?? string.Empty))
+            .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return new TracePropagationAnalytics(
+            traces.Count(trace => trace.Propagation.Hops.Count > 0),
+            hops.Length,
+            hops.Count(hop => hop.ContextValid),
+            hops.Count(hop => !string.IsNullOrWhiteSpace(hop.TraceParent)),
+            hops.Count(hop => !string.IsNullOrWhiteSpace(hop.TraceState)),
+            hops.Sum(hop => hop.Baggage.Count),
+            hops.Length == 0 ? 0 : hops.Count(hop => hop.ContextValid) * 100d / hops.Length,
+            transports,
+            baggageKeys);
+    }
+
+    private static TracePropagation BuildTracePropagation(string traceId, IReadOnlyList<TraceSpan> spans)
+    {
+        var hops = spans
+            .Where(span => AttributeEquals(span, "demo.propagation.role", "extractor"))
+            .Select(span =>
+            {
+                var traceParent = span.Attributes.GetValueOrDefault("demo.propagation.traceparent", string.Empty);
+                var traceState = span.Attributes.GetValueOrDefault("demo.propagation.tracestate", string.Empty);
+                var traceParentParts = traceParent.Split('-');
+                var encodedTraceId = traceParentParts.Length == 4 ? traceParentParts[1] : string.Empty;
+                var encodedParentSpanId = traceParentParts.Length == 4 ? traceParentParts[2] : string.Empty;
+                var sender = spans.FirstOrDefault(candidate => candidate.SpanId == span.ParentSpanId);
+                var baggage = span.Attributes
+                    .Where(attribute => attribute.Key.StartsWith("demo.baggage.", StringComparison.OrdinalIgnoreCase))
+                    .ToDictionary(
+                        attribute => attribute.Key["demo.baggage.".Length..],
+                        attribute => attribute.Value,
+                        StringComparer.OrdinalIgnoreCase);
+                var contextValid = AttributeEquals(span, "demo.propagation.success", "true") &&
+                    traceId.Equals(encodedTraceId, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(span.ParentSpanId, encodedParentSpanId, StringComparison.OrdinalIgnoreCase);
+
+                return new TracePropagationHop(
+                    span.Attributes.GetValueOrDefault("demo.propagation.transport", "unknown"),
+                    sender?.SpanId ?? encodedParentSpanId,
+                    span.SpanId,
+                    sender?.Name ?? "remote caller",
+                    span.Name,
+                    span.ServiceName,
+                    span.DurationMilliseconds,
+                    traceParent,
+                    traceState,
+                    baggage,
+                    contextValid);
+            })
+            .ToArray();
+        var first = hops.FirstOrDefault();
+
+        return new TracePropagation(
+            first?.TraceParent ?? string.Empty,
+            first?.TraceState ?? string.Empty,
+            first?.Baggage ?? new Dictionary<string, string>(),
+            hops);
+    }
+
+    private static bool AttributeEquals(TraceSpan span, string key, string expected) =>
+        span.Attributes.TryGetValue(key, out var value) &&
+        value.Equals(expected, StringComparison.OrdinalIgnoreCase);
 
     private static double Percentile(IReadOnlyList<double> sortedValues, double percentile)
     {
@@ -407,12 +495,13 @@ public sealed record TraceOverview(
     int WindowMinutes,
     int IndexedTraceCount,
     TraceAnalytics Analytics,
+    TracePropagationAnalytics PropagationAnalytics,
     IReadOnlyList<TraceDetail> Traces,
     IReadOnlyList<TraceQueryExample> Queries,
     string? Message)
 {
     public static TraceOverview Unavailable(int minutes, string message) =>
-        new(false, minutes, 0, TraceAnalytics.Empty, [], TempoQueryService.QueryExamples, message);
+        new(false, minutes, 0, TraceAnalytics.Empty, TracePropagationAnalytics.Empty, [], TempoQueryService.QueryExamples, message);
 }
 
 public sealed record TraceAnalytics(
@@ -436,7 +525,8 @@ public sealed record TraceDetail(
     DateTimeOffset StartedAt,
     double DurationMilliseconds,
     string Status,
-    IReadOnlyList<TraceSpan> Spans);
+    IReadOnlyList<TraceSpan> Spans,
+    TracePropagation Propagation);
 
 public sealed record TraceSpan(
     string SpanId,
@@ -454,6 +544,47 @@ public sealed record TraceSpanEvent(
     string Name,
     DateTimeOffset Timestamp,
     IReadOnlyDictionary<string, string> Attributes);
+
+public sealed record TracePropagationAnalytics(
+    int PropagatedTraceCount,
+    int TotalHops,
+    int SuccessfulHops,
+    int TraceParentHeaderCount,
+    int TraceStateHeaderCount,
+    int BaggageItemCount,
+    double ContextContinuityPercent,
+    IReadOnlyList<PropagationTransportAnalytics> Transports,
+    IReadOnlyList<PropagatedBaggageKey> BaggageKeys)
+{
+    public static TracePropagationAnalytics Empty { get; } = new(0, 0, 0, 0, 0, 0, 0, [], []);
+}
+
+public sealed record PropagationTransportAnalytics(
+    string Transport,
+    int HopCount,
+    int SuccessfulHopCount,
+    double AverageReceiverDurationMilliseconds);
+
+public sealed record PropagatedBaggageKey(string Key, int Occurrences, string SampleValue);
+
+public sealed record TracePropagation(
+    string TraceParent,
+    string TraceState,
+    IReadOnlyDictionary<string, string> Baggage,
+    IReadOnlyList<TracePropagationHop> Hops);
+
+public sealed record TracePropagationHop(
+    string Transport,
+    string SenderSpanId,
+    string ReceiverSpanId,
+    string SenderName,
+    string ReceiverName,
+    string ReceiverService,
+    double DurationMilliseconds,
+    string TraceParent,
+    string TraceState,
+    IReadOnlyDictionary<string, string> Baggage,
+    bool ContextValid);
 
 public sealed record TraceDurationBucket(string Label, int Count);
 public sealed record TraceOperation(string Name, int Count, int ErrorCount, double AverageDurationMilliseconds, double P95DurationMilliseconds);

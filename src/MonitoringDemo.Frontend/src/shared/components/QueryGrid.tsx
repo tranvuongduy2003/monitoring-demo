@@ -1,4 +1,5 @@
 import type { QueryExample } from '@/shared/types/query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface QueryGridProps {
   queries: QueryExample[];
@@ -9,11 +10,10 @@ export function QueryGrid({ queries, className = '' }: QueryGridProps) {
   return (
     <div className={`query-grid ${className}`.trim()}>
       {queries.map((item) => (
-        <article className="query-card" key={item.title}>
-          <h3>{item.title}</h3>
-          <p>{item.purpose}</p>
-          <code>{item.query}</code>
-        </article>
+        <Card className="query-card" key={item.title}>
+          <CardHeader><CardTitle>{item.title}</CardTitle><CardDescription>{item.purpose}</CardDescription></CardHeader>
+          <CardContent><code>{item.query}</code></CardContent>
+        </Card>
       ))}
     </div>
   );

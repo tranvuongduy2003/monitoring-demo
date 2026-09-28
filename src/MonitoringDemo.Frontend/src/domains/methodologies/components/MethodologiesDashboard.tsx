@@ -3,6 +3,11 @@ import type { MethodologyScenario } from '@/domains/methodologies/types';
 import { QueryGrid } from '@/shared/components/QueryGrid';
 import { SectionHeading } from '@/shared/components/SectionHeading';
 import { dateTime } from '@/shared/lib/formatters';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 
 type DashboardModel = ReturnType<typeof useMethodologiesDashboard>;
 
@@ -28,15 +33,15 @@ export function MethodologiesDashboard({ model }: { model: DashboardModel }) {
         title="One workload, three diagnostic lenses"
         description={data ? `${data.red.requests} requests analyzed across the last ${data.windowMinutes} minutes` : 'Loading the seeded methodology window...'}
         actions={scenarios.map(({ value, label }, index) => (
-          <button
-            className={index === 0 ? undefined : 'secondary'}
+          <Button
+            variant={index === 0 ? 'default' : 'secondary'}
             type="button"
             disabled={seeding !== null}
             onClick={() => void seedScenario(value)}
             key={value}
           >
             {seeding === value ? 'Seeding...' : label}
-          </button>
+          </Button>
         ))}
       />
 
@@ -83,14 +88,14 @@ export function MethodologiesDashboard({ model }: { model: DashboardModel }) {
         <div className="scenario-table-wrap">
           <h3>Seeded scenario comparison</h3>
           <div className="table-wrap">
-            <table>
-              <thead><tr><th>Scenario</th><th>Requests</th><th>Errors</th><th>Average latency</th></tr></thead>
-              <tbody>
+            <Table>
+              <TableHeader><TableRow><TableHead>Scenario</TableHead><TableHead>Requests</TableHead><TableHead>Errors</TableHead><TableHead>Average latency</TableHead></TableRow></TableHeader>
+              <TableBody>
                 {data?.scenarios.map(scenario => (
-                  <tr key={scenario.scenario}><td><span className="pill">{scenario.scenario}</span></td><td>{scenario.requests}</td><td>{scenario.errors}</td><td>{scenario.averageDurationMilliseconds} ms</td></tr>
+                  <TableRow key={scenario.scenario}><TableCell><Badge variant="secondary" className="pill">{scenario.scenario}</Badge></TableCell><TableCell>{scenario.requests}</TableCell><TableCell>{scenario.errors}</TableCell><TableCell>{scenario.averageDurationMilliseconds} ms</TableCell></TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
         <QueryGrid queries={goldenQueries} className="methodology-queries" />
@@ -109,7 +114,7 @@ function MethodologySection({ id, acronym, title, description, children }: { id:
 }
 
 function Stat({ label, value, detail, tone = '' }: { label: string; value: string; detail: string; tone?: string }) {
-  return <article className={tone}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
+  return <Card asChild className={tone}><article><span>{label}</span><strong>{value}</strong><small>{detail}</small></article></Card>;
 }
 
 function RequestTimeline({ points, maxRequests }: { points: NonNullable<DashboardModel['analytics']['data']>['timeSeries']; maxRequests: number }) {
@@ -133,7 +138,7 @@ function Meter({ label, value, detail, saturation = false }: { label: string; va
   return (
     <div className="resource-meter">
       <div><span>{label}</span><strong>{value}%</strong></div>
-      <div className={`resource-track ${saturation ? 'saturation' : ''} ${level}`}><i style={{ width: `${Math.min(100, value)}%` }} /></div>
+      <Progress className={`resource-track ${saturation ? 'saturation' : ''} ${level}`} value={value} />
       <small>{detail}</small>
     </div>
   );

@@ -1,5 +1,6 @@
 import { MonitoringLinks } from '@/components/MonitoringLinks';
 import { PageHeader } from '@/shared/components/PageHeader';
+import { Card } from '@/components/ui/card';
 
 const areas = [
   { route: 'orders', label: 'Orders', description: 'Watch business activity, revenue, failures, and recent transactions.', accent: 'blue', value: 'Business health' },
@@ -34,13 +35,15 @@ export function OverviewPage() {
 
       <section className="area-grid" aria-label="Observability areas">
         {areas.map((area, index) => (
-          <a className={`area-card ${area.accent}`} href={`#/${area.route}`} key={area.route}>
-            <span className="area-number">0{index + 1}</span>
+          <Card asChild className={`area-card ${area.accent}`} key={area.route}>
+          <a href={`#/${area.route}`}>
+            <span className="area-number">{String(index + 1).padStart(2, '0')}</span>
             <span className="area-value">{area.value}</span>
             <strong>{area.label}</strong>
             <p>{area.description}</p>
             <span className="area-link">Open workspace <span aria-hidden="true">→</span></span>
           </a>
+          </Card>
         ))}
       </section>
 

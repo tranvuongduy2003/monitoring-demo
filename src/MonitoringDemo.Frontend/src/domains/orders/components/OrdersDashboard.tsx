@@ -2,6 +2,11 @@ import type { useDemoReset } from '@/domains/demo/hooks/useDemoReset';
 import type { useOrdersDashboard } from '@/domains/orders/hooks/useOrdersDashboard';
 import { SectionHeading } from '@/shared/components/SectionHeading';
 import { dateTime, money } from '@/shared/lib/formatters';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type OrdersDashboardModel = ReturnType<typeof useOrdersDashboard>;
 type DemoResetModel = ReturnType<typeof useDemoReset>;
@@ -17,19 +22,19 @@ export function OrdersDashboard({ model, reset }: { model: OrdersDashboardModel;
 
   return (
     <>
-      {message && <p className="notice" role="status">{message}</p>}
-      {reset.message && <p className="notice" role="status">{reset.message}</p>}
-      {reset.error && <p className="error" role="alert">{reset.error}</p>}
+      {message && <Alert variant="success" className="notice" role="status"><AlertDescription>{message}</AlertDescription></Alert>}
+      {reset.message && <Alert variant="success" className="notice" role="status"><AlertDescription>{reset.message}</AlertDescription></Alert>}
+      {reset.error && <Alert variant="destructive" className="error"><AlertDescription>{reset.error}</AlertDescription></Alert>}
       {(stats.error || orders.error) && (
-        <p className="error" role="alert">Order data could not be loaded. The page will keep retrying.</p>
+        <Alert variant="destructive" className="error"><AlertDescription>Order data could not be loaded. The page will keep retrying.</AlertDescription></Alert>
       )}
 
       <section className="stats" aria-label="Order statistics">
         {cards.map(([label, value]) => (
-          <article className="card" key={label}>
+          <Card className="card" key={label}><CardContent>
             <p>{label}</p>
             <strong>{value}</strong>
-          </article>
+          </CardContent></Card>
         ))}
       </section>
 
@@ -37,29 +42,29 @@ export function OrdersDashboard({ model, reset }: { model: OrdersDashboardModel;
         <SectionHeading
           title="Recent orders"
           description="Refreshes every 5 seconds"
-          actions={<button className="secondary" type="button" onClick={refresh} disabled={reset.clearing}>Refresh</button>}
+          actions={<Button variant="secondary" type="button" onClick={refresh} disabled={reset.clearing}>Refresh</Button>}
         />
         <div className="table-wrap">
-          <table>
-            <thead>
-              <tr><th>Order</th><th>Product</th><th>Status</th><th>Qty</th><th>Total</th><th>Created</th></tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow><TableHead>Order</TableHead><TableHead>Product</TableHead><TableHead>Status</TableHead><TableHead>Qty</TableHead><TableHead>Total</TableHead><TableHead>Created</TableHead></TableRow>
+            </TableHeader>
+            <TableBody>
               {orders.data?.map((order) => (
-                <tr key={order.id}>
-                  <td>#{order.id}</td>
-                  <td>{order.product?.name ?? `Product ${order.productId}`}</td>
-                  <td><span className={`pill ${order.status.toLowerCase()}`}>{order.status}</span></td>
-                  <td>{order.quantity}</td>
-                  <td>{money.format(order.total)}</td>
-                  <td>{dateTime.format(new Date(order.createdAt))}</td>
-                </tr>
+                <TableRow key={order.id}>
+                  <TableCell>#{order.id}</TableCell>
+                  <TableCell>{order.product?.name ?? `Product ${order.productId}`}</TableCell>
+                  <TableCell><Badge variant={order.status.toLowerCase() === 'completed' ? 'success' : order.status.toLowerCase() === 'failed' ? 'destructive' : 'secondary'}>{order.status}</Badge></TableCell>
+                  <TableCell>{order.quantity}</TableCell>
+                  <TableCell>{money.format(order.total)}</TableCell>
+                  <TableCell>{dateTime.format(new Date(order.createdAt))}</TableCell>
+                </TableRow>
               ))}
               {!orders.loading && !orders.data?.length && (
-                <tr><td className="empty" colSpan={6}>No orders yet.</td></tr>
+                <TableRow><TableCell className="empty" colSpan={6}>No orders yet.</TableCell></TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </section>
     </>

@@ -1,34 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { AppShell, type AppRoute } from '@/shared/components/AppShell';
-import { CollectorPage } from '@/pages/CollectorPage';
-import { LearnPage } from '@/pages/LearnPage';
-import { LogsPage } from '@/pages/LogsPage';
-import { MetricsPage } from '@/pages/MetricsPage';
-import { MethodologiesPage } from '@/pages/MethodologiesPage';
-import { OpenTelemetryPage } from '@/pages/OpenTelemetryPage';
-import { OtlpPage } from '@/pages/OtlpPage';
-import { OrdersPage } from '@/pages/OrdersPage';
-import { OverviewPage } from '@/pages/OverviewPage';
-import { PrometheusPage } from '@/pages/PrometheusPage';
-import { TracesPage } from '@/pages/TracesPage';
-import { GrafanaPage } from '@/pages/GrafanaPage';
-import { ApplicationMonitoringPage } from '@/pages/ApplicationMonitoringPage';
-
-const pages: Record<AppRoute, { title: string; content: ReactNode }> = {
-  overview: { title: 'Overview', content: <OverviewPage /> },
-  orders: { title: 'Orders', content: <OrdersPage /> },
-  application: { title: 'Application Monitoring', content: <ApplicationMonitoringPage /> },
-  opentelemetry: { title: 'OpenTelemetry', content: <OpenTelemetryPage /> },
-  otlp: { title: 'OTLP', content: <OtlpPage /> },
-  collector: { title: 'OpenTelemetry Collector', content: <CollectorPage /> },
-  metrics: { title: 'Metrics', content: <MetricsPage /> },
-  methodologies: { title: 'Monitoring Methodologies', content: <MethodologiesPage /> },
-  prometheus: { title: 'Prometheus', content: <PrometheusPage /> },
-  logs: { title: 'Logs', content: <LogsPage /> },
-  traces: { title: 'Traces', content: <TracesPage /> },
-  grafana: { title: 'Grafana', content: <GrafanaPage /> },
-  learn: { title: 'Learn & tools', content: <LearnPage /> },
-};
+import { useEffect, useState } from 'react';
+import { readRoute, routes, type AppRoute } from '@/app/routes';
+import { AppShell } from '@/shared/components/AppShell';
 
 export default function App() {
   const [route, setRoute] = useState<AppRoute>(readRoute);
@@ -40,14 +12,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    document.title = `${pages[route].title} · Pulseboard`;
+    document.title = `${routes[route].title} · Pulseboard`;
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [route]);
 
-  return <AppShell activeRoute={route}>{pages[route].content}</AppShell>;
-}
-
-function readRoute(): AppRoute {
-  const candidate = window.location.hash.replace(/^#\/?/, '') || 'overview';
-  return candidate in pages ? candidate as AppRoute : 'overview';
+  const ActivePage = routes[route].component;
+  return <AppShell activeRoute={route}><ActivePage /></AppShell>;
 }

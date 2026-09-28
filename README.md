@@ -142,15 +142,26 @@ Shell, IDE, CI, and deployment environment variables take precedence over `.env`
 
 ```text
 src/
-├── MonitoringDemo.AppHost/          Aspire and monitoring infrastructure
-├── MonitoringDemo.ApiService/       API, data, telemetry, and background jobs
+├── MonitoringDemo.AppHost/          Aspire composition root
+│   ├── Configuration/               Validated, typed environment settings
+│   ├── Orchestration/               Database, observability, and workload resources
+│   ├── grafana/                      Provisioning and dashboards
+│   ├── otel-collector/               Collector pipelines
+│   ├── prometheus/                   Scraping, targets, and rules
+│   ├── loki/                         Log storage configuration
+│   └── tempo/                        Trace storage configuration
+├── MonitoringDemo.ApiService/       Feature-oriented backend
+│   ├── Domain/                       Core entities and domain constants
+│   ├── Features/                     Vertical API slices (endpoint, service, contracts)
+│   ├── Hosting/                      Dependency injection and HTTP pipeline composition
+│   └── Infrastructure/               Persistence, observability, and telemetry adapters
 ├── MonitoringDemo.Frontend/         React dashboard
 │   └── src/
 │       ├── app/                      Application entry and routing
 │       ├── pages/                    Focused page composition
 │       ├── domains/                  Orders, metrics, logging, and tracing
 │       └── shared/                   Reusable UI, hooks, and services
-└── MonitoringDemo.ServiceDefaults/  Health checks and OpenTelemetry defaults
+└── MonitoringDemo.ServiceDefaults/  Shared hosting, health, configuration, and telemetry defaults
 ```
 
 ## Validation

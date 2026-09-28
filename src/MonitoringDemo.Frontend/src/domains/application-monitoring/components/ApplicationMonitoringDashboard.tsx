@@ -3,6 +3,10 @@ import type { ApplicationMonitoringCategory, ApplicationMonitoringScenario, Appl
 import { QueryGrid } from '@/shared/components/QueryGrid';
 import { SectionHeading } from '@/shared/components/SectionHeading';
 import { dateTime } from '@/shared/lib/formatters';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 
 type DashboardModel = ReturnType<typeof useApplicationMonitoringDashboard>;
 
@@ -34,9 +38,9 @@ export function ApplicationMonitoringDashboard({ model }: { model: DashboardMode
         title="Instrument the complete request path"
         description={data ? `${data.sections.reduce((sum, item) => sum + item.operations, 0).toLocaleString()} observations analyzed over ${data.windowMinutes} minutes` : 'Loading application telemetry...'}
         actions={scenarios.map(({ value, label }, index) => (
-          <button className={index === 0 ? undefined : 'secondary'} type="button" disabled={seeding !== null} onClick={() => void seed(value)} key={value}>
+          <Button variant={index === 0 ? 'default' : 'secondary'} type="button" disabled={seeding !== null} onClick={() => void seed(value)} key={value}>
             {seeding === value ? 'Seeding...' : label}
-          </button>
+          </Button>
         ))}
       />
 
@@ -85,9 +89,9 @@ export function ApplicationMonitoringDashboard({ model }: { model: DashboardMode
 
       <MonitoringSection id="custom-span" label="Custom spans" description="Add domain-level trace boundaries around checkout, database, cache, and dependency work.">
         <SectionSummary section={section('custom-span')} />
-        <div className="application-table-wrap"><table><thead><tr><th>Span</th><th>Trace ID</th><th>Duration</th><th>Outcome</th><th>Observed</th></tr></thead><tbody>
-          {data?.recentSpans.map((span, index) => <tr key={`${span.traceId}-${index}`}><td>{span.name}</td><td><code>{span.traceId.slice(0, 16)}…</code></td><td>{span.durationMilliseconds} ms</td><td><span className={`signal-outcome ${span.success ? 'ok' : 'failed'}`}>{span.success ? 'ok' : 'error'}</span></td><td>{dateTime.format(new Date(span.timestamp))}</td></tr>)}
-        </tbody></table></div>
+        <div className="application-table-wrap"><Table><TableHeader><TableRow><TableHead>Span</TableHead><TableHead>Trace ID</TableHead><TableHead>Duration</TableHead><TableHead>Outcome</TableHead><TableHead>Observed</TableHead></TableRow></TableHeader><TableBody>
+          {data?.recentSpans.map((span, index) => <TableRow key={`${span.traceId}-${index}`}><TableCell>{span.name}</TableCell><TableCell><code>{span.traceId.slice(0, 16)}…</code></TableCell><TableCell>{span.durationMilliseconds} ms</TableCell><TableCell><Badge variant={span.success ? 'success' : 'destructive'} className={`signal-outcome ${span.success ? 'ok' : 'failed'}`}>{span.success ? 'ok' : 'error'}</Badge></TableCell><TableCell>{dateTime.format(new Date(span.timestamp))}</TableCell></TableRow>)}
+        </TableBody></Table></div>
         <Queries data={data} category="custom-span" />
       </MonitoringSection>
 
@@ -118,13 +122,13 @@ function SectionSummary({ section, extra }: { section?: ApplicationMonitoringSec
 }
 
 function Stat({ label, value, detail, danger = false }: { label: string; value: string | number; detail: string; danger?: boolean }) {
-  return <article className={danger ? 'danger' : ''}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
+  return <Card asChild className={danger ? 'danger' : ''}><article><span>{label}</span><strong>{value}</strong><small>{detail}</small></article></Card>;
 }
 
 function BreakdownTable({ section, firstColumn }: { section?: ApplicationMonitoringSection; firstColumn: string }) {
-  return <div className="application-table-wrap"><table><thead><tr><th>{firstColumn}</th><th>Operations</th><th>Errors</th><th>Average latency</th></tr></thead><tbody>
-    {section?.breakdown.map(item => <tr key={item.name}><td>{item.name}</td><td>{item.operations}</td><td>{item.errors}</td><td>{item.averageDurationMilliseconds} ms</td></tr>)}
-  </tbody></table></div>;
+  return <div className="application-table-wrap"><Table><TableHeader><TableRow><TableHead>{firstColumn}</TableHead><TableHead>Operations</TableHead><TableHead>Errors</TableHead><TableHead>Average latency</TableHead></TableRow></TableHeader><TableBody>
+    {section?.breakdown.map(item => <TableRow key={item.name}><TableCell>{item.name}</TableCell><TableCell>{item.operations}</TableCell><TableCell>{item.errors}</TableCell><TableCell>{item.averageDurationMilliseconds} ms</TableCell></TableRow>)}
+  </TableBody></Table></div>;
 }
 
 function Queries({ data, category }: { data?: DashboardModel['analytics']['data']; category: ApplicationMonitoringCategory }) {

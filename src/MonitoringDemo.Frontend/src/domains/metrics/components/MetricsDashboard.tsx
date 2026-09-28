@@ -2,6 +2,7 @@ import type { useMetricsDashboard } from '@/domains/metrics/hooks/useMetricsDash
 import { SectionHeading } from '@/shared/components/SectionHeading';
 import { QueryGrid } from '@/shared/components/QueryGrid';
 import { dateTime } from '@/shared/lib/formatters';
+import { Button } from '@/components/ui/button';
 
 type MetricsDashboardModel = ReturnType<typeof useMetricsDashboard>;
 
@@ -18,7 +19,7 @@ export function MetricsDashboard({ model }: { model: MetricsDashboardModel }) {
         eyebrow="Metrics lab"
         title="Live instruments and distribution analytics"
         description={data ? `${data.summary.count} observations in the last ${data.windowMinutes} minutes` : 'Loading the seeded metrics window...'}
-        actions={<button type="button" onClick={() => void seedMetrics()} disabled={seeding}>{seeding ? 'Seeding...' : 'Seed 120 observations'}</button>}
+        actions={<Button type="button" onClick={() => void seedMetrics()} disabled={seeding}>{seeding ? 'Seeding...' : 'Seed 120 observations'}</Button>}
       />
 
       {message && <p className="notice panel-notice" role="status">{message}</p>}

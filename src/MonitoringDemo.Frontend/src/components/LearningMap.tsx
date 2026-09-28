@@ -1,3 +1,5 @@
+import { Card } from '@/components/ui/card';
+
 const concepts = [
   ['Time series', 'A metric name and one label set produce timestamped values'],
   ['Counter', 'Monotonic totals become throughput with PromQL rate()'],
@@ -27,9 +29,10 @@ export function LearningMap() {
       </div>
       <div className="concept-grid">
         {concepts.map(([title, description]) => (
-          <article key={title}><strong>{title}</strong><span>{description}</span></article>
+          <Card asChild key={title}><article><strong>{title}</strong><span>{description}</span></article></Card>
         ))}
       </div>
     </section>
   );
 }
+

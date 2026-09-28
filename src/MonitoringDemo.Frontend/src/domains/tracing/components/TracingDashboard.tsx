@@ -8,7 +8,10 @@ import type {
 } from '@/domains/tracing/types';
 import { QueryGrid } from '@/shared/components/QueryGrid';
 import { SectionHeading } from '@/shared/components/SectionHeading';
-import { StatusBadge } from '@/shared/components/StatusBadge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 
 type TracingDashboardModel = ReturnType<typeof useTracingDashboard>;
 
@@ -49,10 +52,10 @@ export function TracingDashboard({ model }: { model: TracingDashboardModel }) {
             : data?.message ?? 'Connecting to Tempo...'}
           actions={(
             <>
-            <StatusBadge active={Boolean(data?.available)} activeLabel="Tempo connected" inactiveLabel="Tempo warming up" />
-            <button type="button" onClick={() => void seedTraces()} disabled={seeding}>
+            <Badge variant={data?.available ? 'success' : 'secondary'} className={`status ${data?.available ? 'online' : ''}`}><span className="status-dot" aria-hidden="true" />{data?.available ? 'Tempo connected' : 'Tempo warming up'}</Badge>
+            <Button type="button" onClick={() => void seedTraces()} disabled={seeding}>
               {seeding ? 'Seeding...' : 'Seed 12 context traces'}
-            </button>
+            </Button>
             </>
           )}
         />
@@ -76,21 +79,21 @@ export function TracingDashboard({ model }: { model: TracingDashboardModel }) {
           <div>
             <h3>Operations</h3>
             <div className="table-wrap compact-table">
-              <table>
-                <thead><tr><th>Span</th><th>Calls</th><th>Errors</th><th>Avg</th><th>p95</th></tr></thead>
-                <tbody>
+              <Table>
+                <TableHeader><TableRow><TableHead>Span</TableHead><TableHead>Calls</TableHead><TableHead>Errors</TableHead><TableHead>Avg</TableHead><TableHead>p95</TableHead></TableRow></TableHeader>
+                <TableBody>
                   {data?.analytics.operations.map(operation => (
-                    <tr key={operation.name}>
-                      <td><code>{operation.name}</code></td>
-                      <td>{operation.count}</td>
-                      <td>{operation.errorCount}</td>
-                      <td>{duration(operation.averageDurationMilliseconds)}</td>
-                      <td>{duration(operation.p95DurationMilliseconds)}</td>
-                    </tr>
+                    <TableRow key={operation.name}>
+                      <TableCell><code>{operation.name}</code></TableCell>
+                      <TableCell>{operation.count}</TableCell>
+                      <TableCell>{operation.errorCount}</TableCell>
+                      <TableCell>{duration(operation.averageDurationMilliseconds)}</TableCell>
+                      <TableCell>{duration(operation.p95DurationMilliseconds)}</TableCell>
+                    </TableRow>
                   ))}
-                  {!data?.analytics.operations.length && <tr><td colSpan={5} className="empty">Seed traces to populate operation analytics.</td></tr>}
-                </tbody>
-              </table>
+                  {!data?.analytics.operations.length && <TableRow><TableCell colSpan={5} className="empty">Seed traces to populate operation analytics.</TableCell></TableRow>}
+                </TableBody>
+              </Table>
             </div>
           </div>
         </div>
@@ -109,7 +112,8 @@ export function TracingDashboard({ model }: { model: TracingDashboardModel }) {
         <div className="trace-browser">
           <div className="trace-list" aria-label="Recent traces">
             {data?.traces.map(trace => (
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 className={`trace-list-item${trace.traceId === selectedTrace?.traceId ? ' selected' : ''}`}
                 key={trace.traceId}
@@ -118,7 +122,7 @@ export function TracingDashboard({ model }: { model: TracingDashboardModel }) {
                 <span><strong>{trace.rootSpanName}</strong><small>{new Date(trace.startedAt).toLocaleTimeString()}</small></span>
                 <span><Status status={trace.status} /><small>{duration(trace.durationMilliseconds)}</small></span>
                 <code>{trace.traceId}</code>
-              </button>
+              </Button>
             ))}
             {!data?.traces.length && <p className="muted trace-empty">Tempo trace bodies appear a few seconds after startup seeding.</p>}
           </div>
@@ -229,20 +233,20 @@ function ContextPropagationLab({ analytics, trace }: { analytics?: TracePropagat
         <div>
           <h3>Transport analytics</h3>
           <div className="table-wrap compact-table">
-            <table>
-              <thead><tr><th>Carrier</th><th>Hops</th><th>Valid</th><th>Receiver avg</th></tr></thead>
-              <tbody>
+            <Table>
+              <TableHeader><TableRow><TableHead>Carrier</TableHead><TableHead>Hops</TableHead><TableHead>Valid</TableHead><TableHead>Receiver avg</TableHead></TableRow></TableHeader>
+              <TableBody>
                 {analytics?.transports.map(transport => (
-                  <tr key={transport.transport}>
-                    <td><strong>{transportLabel(transport.transport)}</strong></td>
-                    <td>{transport.hopCount}</td>
-                    <td>{transport.successfulHopCount}</td>
-                    <td>{duration(transport.averageReceiverDurationMilliseconds)}</td>
-                  </tr>
+                  <TableRow key={transport.transport}>
+                    <TableCell><strong>{transportLabel(transport.transport)}</strong></TableCell>
+                    <TableCell>{transport.hopCount}</TableCell>
+                    <TableCell>{transport.successfulHopCount}</TableCell>
+                    <TableCell>{duration(transport.averageReceiverDurationMilliseconds)}</TableCell>
+                  </TableRow>
                 ))}
-                {!analytics?.transports.length && <tr><td colSpan={4} className="empty">Waiting for propagation spans.</td></tr>}
-              </tbody>
-            </table>
+                {!analytics?.transports.length && <TableRow><TableCell colSpan={4} className="empty">Waiting for propagation spans.</TableCell></TableRow>}
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>
@@ -314,7 +318,7 @@ function CarrierPart({ label, value }: { label: string; value: string }) {
 }
 
 function Summary({ label, value, detail }: { label: string; value: string | number; detail: string }) {
-  return <article><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
+  return <Card asChild><article><span>{label}</span><strong>{value}</strong><small>{detail}</small></article></Card>;
 }
 
 function DurationChart({ data }: { data: { label: string; count: number }[] }) {
@@ -342,7 +346,7 @@ function SpanRow({ span, trace, selected, onSelect }: { span: TraceSpan; trace: 
   const depth = spanDepth(span, trace.spans);
 
   return (
-    <button type="button" className={`span-row${selected ? ' selected' : ''}`} onClick={onSelect}>
+    <Button variant="ghost" type="button" className={`span-row${selected ? ' selected' : ''}`} onClick={onSelect}>
       <span className="span-name" style={{ paddingLeft: `${depth * 14}px` }}>
         <i className={`span-status-dot ${span.status.toLowerCase()}`} />
         <span><strong>{span.name}</strong><small>{span.kind} · {duration(span.durationMilliseconds)}</small></span>
@@ -350,7 +354,7 @@ function SpanRow({ span, trace, selected, onSelect }: { span: TraceSpan; trace: 
       <span className="span-track">
         <i className={span.status.toLowerCase()} style={{ left: `${left}%`, width: `${width}%` }} />
       </span>
-    </button>
+    </Button>
   );
 }
 
@@ -399,7 +403,7 @@ function SpanInspector({ trace, span }: { trace?: TraceDetail; span?: TraceSpan 
 }
 
 function Status({ status }: { status: string }) {
-  return <span className={`trace-status ${status.toLowerCase()}`}>{status}</span>;
+  return <Badge variant={status.toLowerCase() === 'error' ? 'destructive' : 'success'} className={`trace-status ${status.toLowerCase()}`}>{status}</Badge>;
 }
 
 function Concept({ title, value, code = false }: { title: string; value: string; code?: boolean }) {

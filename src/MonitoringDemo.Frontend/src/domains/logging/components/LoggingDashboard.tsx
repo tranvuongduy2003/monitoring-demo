@@ -1,7 +1,8 @@
 import type { useLoggingDashboard } from '@/domains/logging/hooks/useLoggingDashboard';
 import { QueryGrid } from '@/shared/components/QueryGrid';
 import { SectionHeading } from '@/shared/components/SectionHeading';
-import { StatusBadge } from '@/shared/components/StatusBadge';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 type LoggingDashboardModel = ReturnType<typeof useLoggingDashboard>;
 
@@ -18,7 +19,7 @@ export function LoggingDashboard({ model }: { model: LoggingDashboardModel }) {
           eyebrow="Live Loki analytics"
           title={<>Logs in the last {data?.windowMinutes ?? 60} minutes</>}
           description={data?.available ? `${data.totalLogs} events indexed` : data?.message ?? 'Connecting to Loki...'}
-          actions={<StatusBadge active={Boolean(data?.available)} activeLabel="Loki connected" inactiveLabel="Loki warming up" />}
+          actions={<Badge variant={data?.available ? 'success' : 'secondary'} className={`status ${data?.available ? 'online' : ''}`}><span className="status-dot" aria-hidden="true" />{data?.available ? 'Loki connected' : 'Loki warming up'}</Badge>}
         />
 
         {(analytics.error || error) && (
@@ -42,8 +43,8 @@ export function LoggingDashboard({ model }: { model: LoggingDashboardModel }) {
             <h3>Correlation lab</h3>
             <p>Generate an event, then query Loki using the returned correlation or trace ID.</p>
             <div className="button-row">
-              <button type="button" onClick={() => void generateLog(false)} disabled={generating}>Generate info</button>
-              <button className="danger" type="button" onClick={() => void generateLog(true)} disabled={generating}>Generate exception</button>
+              <Button type="button" onClick={() => void generateLog(false)} disabled={generating}>Generate info</Button>
+              <Button variant="destructive" type="button" onClick={() => void generateLog(true)} disabled={generating}>Generate exception</Button>
             </div>
             {demo && (
               <dl className="identity-grid">

@@ -1,0 +1,59 @@
+:root {
+  --background: #f2f7f7;
+  --foreground: #17313b;
+  --card: rgb(255 255 255 / 52%);
+  --card-foreground: #17313b;
+  --primary: #116b89;
+  --primary-foreground: #f8ffff;
+  --secondary: rgb(255 255 255 / 56%);
+  --secondary-foreground: #244653;
+  --muted: rgb(235 244 244 / 62%);
+  --muted-foreground: #5f7279;
+  --border: rgb(255 255 255 / 64%);
+  --ring: rgb(17 138 178 / 42%);
+  --radius: 0.875rem;
+
+  --coral: #ff7f50;
+  --sun: #ffd166;
+  --mint: #06d6a0;
+  --ocean: #118ab2;
+  --coral-soft: rgb(255 127 80 / 18%);
+  --sun-soft: rgb(255 209 102 / 20%);
+  --mint-soft: rgb(6 214 160 / 16%);
+  --ocean-soft: rgb(17 138 178 / 18%);
+
+  --glass-subtle: rgb(255 255 255 / 25%);
+  --glass: rgb(255 255 255 / 44%);
+  --glass-raised: rgb(255 255 255 / 61%);
+  --glass-border: rgb(255 255 255 / 72%);
+  --glass-inner: inset 0 1px 0 rgb(255 255 255 / 82%);
+  --glass-shadow-sm: 0 12px 34px rgb(26 71 82 / 8%);
+  --glass-shadow: 0 28px 80px rgb(26 71 82 / 13%);
+  --glass-blur: blur(28px) saturate(128%);
+
+  --signal-blue: #118ab2;
+  --signal-violet: #6976a8;
+  --signal-cyan: #0ca98e;
+  --signal-green: #079b77;
+  --signal-amber: #c89225;
+  --signal-red: #d86848;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}

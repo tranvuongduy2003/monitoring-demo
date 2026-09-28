@@ -2,6 +2,10 @@ import type { usePrometheusDashboard } from '@/domains/prometheus/hooks/useProme
 import { SectionHeading } from '@/shared/components/SectionHeading';
 import type { PrometheusOverview, PromQlExample, PromQlSeries } from '@/domains/prometheus/types';
 import { dateTime } from '@/shared/lib/formatters';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 
 type PrometheusDashboardModel = ReturnType<typeof usePrometheusDashboard>;
 
@@ -21,7 +25,7 @@ export function PrometheusDashboard({ model }: { model: PrometheusDashboardModel
         title="Pull-based collection, storage, rules, and live analytics"
         description={statusText(data, overview.loading)}
         headingId="prometheus-heading"
-        actions={<button type="button" onClick={() => void seedPrometheus()} disabled={seeding}>{seeding ? 'Seeding...' : 'Seed 240 observations'}</button>}
+        actions={<Button type="button" onClick={() => void seedPrometheus()} disabled={seeding}>{seeding ? 'Seeding...' : 'Seed 240 observations'}</Button>}
       />
 
       {message && <p className="notice panel-notice" role="status">{message}</p>}
@@ -84,9 +88,9 @@ export function PrometheusDashboard({ model }: { model: PrometheusDashboardModel
             <h3 id="promql-fundamentals-heading">Live query catalog</h3>
             <p className="muted">Each expression runs against Prometheus. Values and label sets update every 10 seconds.</p>
           </div>
-          <span className={`pill ${fundamentals.data?.connected ? 'completed' : 'pending'}`}>
+          <Badge variant={fundamentals.data?.connected ? 'success' : 'secondary'} className={`pill ${fundamentals.data?.connected ? 'completed' : 'pending'}`}>
             {fundamentals.data?.connected ? `${fundamentals.data.examples.length} queries live` : 'waiting for Prometheus'}
-          </span>
+          </Badge>
         </div>
         {fundamentals.error && <p className="error panel-notice" role="alert">The PromQL catalog could not be loaded. Automatic retry is active.</p>}
         {fundamentals.data && !fundamentals.data.connected && <p className="error panel-notice" role="status">PromQL results are unavailable: {fundamentals.data.error}</p>}
@@ -99,20 +103,20 @@ export function PrometheusDashboard({ model }: { model: PrometheusDashboardModel
       <div className="prometheus-table-section">
         <div className="subheading"><div><h3>Targets, jobs, and instances</h3><p className="muted">A job groups targets; every target endpoint becomes an instance label.</p></div></div>
         <div className="table-wrap">
-          <table>
-            <thead><tr><th>Health</th><th>Job</th><th>Instance</th><th>Scrape URL</th><th>Interval</th><th>Last duration</th></tr></thead>
-            <tbody>
+          <Table>
+            <TableHeader><TableRow><TableHead>Health</TableHead><TableHead>Job</TableHead><TableHead>Instance</TableHead><TableHead>Scrape URL</TableHead><TableHead>Interval</TableHead><TableHead>Last duration</TableHead></TableRow></TableHeader>
+            <TableBody>
               {data?.targets.map((target) => (
-                <tr key={`${target.job}-${target.instance}`}>
-                  <td><span className={`pill ${target.health === 'up' ? 'completed' : 'failed'}`}>{target.health}</span></td>
-                  <td>{target.job}</td><td><code>{target.instance}</code></td><td><code>{target.scrapeUrl}</code></td>
-                  <td>{target.scrapeInterval || (target.job === 'apiservice' ? data.settings.apiScrapeInterval : data.settings.globalScrapeInterval)}</td>
-                  <td>{(target.lastScrapeDurationSeconds * 1000).toFixed(1)} ms</td>
-                </tr>
+                <TableRow key={`${target.job}-${target.instance}`}>
+                  <TableCell><Badge variant={target.health === 'up' ? 'success' : 'destructive'} className={`pill ${target.health === 'up' ? 'completed' : 'failed'}`}>{target.health}</Badge></TableCell>
+                  <TableCell>{target.job}</TableCell><TableCell><code>{target.instance}</code></TableCell><TableCell><code>{target.scrapeUrl}</code></TableCell>
+                  <TableCell>{target.scrapeInterval || (target.job === 'apiservice' ? data.settings.apiScrapeInterval : data.settings.globalScrapeInterval)}</TableCell>
+                  <TableCell>{(target.lastScrapeDurationSeconds * 1000).toFixed(1)} ms</TableCell>
+                </TableRow>
               ))}
-              {!data?.targets.length && <tr><td colSpan={6} className="empty">No discovered targets available.</td></tr>}
-            </tbody>
-          </table>
+              {!data?.targets.length && <TableRow><TableCell colSpan={6} className="empty">No discovered targets available.</TableCell></TableRow>}
+            </TableBody>
+          </Table>
         </div>
       </div>
 
@@ -196,7 +200,7 @@ function formatPromQlValue(value: number): string {
 }
 
 function Summary({ label, value, detail }: { label: string; value: string | number; detail: string }) {
-  return <article><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
+  return <Card asChild><article><span>{label}</span><strong>{value}</strong><small>{detail}</small></article></Card>;
 }
 
 function FlowNode({ title, detail }: { title: string; detail: string }) {
@@ -213,7 +217,7 @@ function RuleList({ title, rules, empty }: { title: string; rules: PrometheusOve
       <h3>{title}</h3>
       {rules.map((rule) => (
         <article className="rule-card" key={rule.name}>
-          <div><strong>{rule.name}</strong><span className={`pill ${rule.health === 'ok' ? 'completed' : 'failed'}`}>{rule.state}</span></div>
+          <div><strong>{rule.name}</strong><Badge variant={rule.health === 'ok' ? 'success' : 'destructive'} className={`pill ${rule.health === 'ok' ? 'completed' : 'failed'}`}>{rule.state}</Badge></div>
           <code>{rule.query}</code>
           <small>{rule.group} · evaluated in {(rule.evaluationTimeSeconds * 1000).toFixed(2)} ms</small>
         </article>

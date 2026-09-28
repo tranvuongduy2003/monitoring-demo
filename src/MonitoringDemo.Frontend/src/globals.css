@@ -1,3 +1,6 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
 :root {
   color: #172033;
   background: #eef4ff;
@@ -27,24 +30,7 @@ body {
 html { scroll-behavior: smooth; }
 
 button, a { font: inherit; }
-
-button {
-  border: 1px solid rgb(255 255 255 / 35%);
-  border-radius: 8px;
-  padding: 10px 14px;
-  color: #fff;
-  background: linear-gradient(135deg, #3b82f6, #4f46e5);
-  box-shadow: 0 8px 20px rgb(37 99 235 / 20%);
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 150ms ease, box-shadow 150ms ease;
-}
-
-button:hover {
-  box-shadow: 0 10px 24px rgb(37 99 235 / 28%);
-  transform: translateY(-1px);
-}
-button:disabled { cursor: wait; opacity: 0.6; }
+button:disabled { cursor: wait; }
 
 button:focus-visible,
 a:focus-visible {

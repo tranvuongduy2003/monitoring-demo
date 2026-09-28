@@ -1,7 +1,10 @@
 import type { useCollectorDashboard } from '@/domains/collector/hooks/useCollectorDashboard';
 import type { CollectorComponentDetail, CollectorRecentRun, CollectorTimelinePoint } from '@/domains/collector/types';
 import { SectionHeading } from '@/shared/components/SectionHeading';
-import { StatusBadge } from '@/shared/components/StatusBadge';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 type CollectorDashboardModel = ReturnType<typeof useCollectorDashboard>;
 
@@ -21,8 +24,8 @@ export function CollectorDashboard({ model }: { model: CollectorDashboardModel }
           : 'Loading the Collector pipeline...'}
         actions={(
           <>
-          <StatusBadge active={Boolean(data?.configured)} activeLabel="Collector configured" inactiveLabel="Collector fallback" />
-          <button type="button" onClick={() => void seedCollector()} disabled={seeding}>{seeding ? 'Seeding...' : 'Seed 150 pipeline requests'}</button>
+          <Badge variant={data?.configured ? 'success' : 'secondary'} className={`status ${data?.configured ? 'online' : ''}`}><span className="status-dot" aria-hidden="true" />{data?.configured ? 'Collector configured' : 'Collector fallback'}</Badge>
+          <Button type="button" onClick={() => void seedCollector()} disabled={seeding}>{seeding ? 'Seeding...' : 'Seed 150 pipeline requests'}</Button>
           </>
         )}
       />
@@ -169,7 +172,7 @@ function CollectorTimeline({ points }: { points: CollectorTimelinePoint[] }) {
 }
 
 function RecentRuns({ runs }: { runs: CollectorRecentRun[] }) {
-  return <div className="table-wrap compact-table collector-runs"><table><thead><tr><th>Signal</th><th>Receiver</th><th>Exporter</th><th>Input</th><th>Output</th><th>Batches</th><th>Trigger</th><th>Memory</th></tr></thead><tbody>{runs.map((run, index) => <tr key={`${run.timestamp}-${index}`}><td><strong>{run.signal}</strong></td><td><code>{run.protocol}</code></td><td>{run.exporter}</td><td>{run.receivedRecords}</td><td>{run.exportedRecords}</td><td>{run.batchCount}</td><td>{run.batchTrigger}</td><td><span className={`collector-memory-state ${run.memoryState.toLowerCase().replace(' ', '-')}`}>{run.memoryMib.toFixed(0)} MiB</span></td></tr>)}{!runs.length && <tr><td colSpan={8} className="empty">Seed requests to populate recent pipeline analytics.</td></tr>}</tbody></table></div>;
+  return <div className="table-wrap compact-table collector-runs"><Table><TableHeader><TableRow><TableHead>Signal</TableHead><TableHead>Receiver</TableHead><TableHead>Exporter</TableHead><TableHead>Input</TableHead><TableHead>Output</TableHead><TableHead>Batches</TableHead><TableHead>Trigger</TableHead><TableHead>Memory</TableHead></TableRow></TableHeader><TableBody>{runs.map((run, index) => <TableRow key={`${run.timestamp}-${index}`}><TableCell><strong>{run.signal}</strong></TableCell><TableCell><code>{run.protocol}</code></TableCell><TableCell>{run.exporter}</TableCell><TableCell>{run.receivedRecords}</TableCell><TableCell>{run.exportedRecords}</TableCell><TableCell>{run.batchCount}</TableCell><TableCell>{run.batchTrigger}</TableCell><TableCell><span className={`collector-memory-state ${run.memoryState.toLowerCase().replace(' ', '-')}`}>{run.memoryMib.toFixed(0)} MiB</span></TableCell></TableRow>)}{!runs.length && <TableRow><TableCell colSpan={8} className="empty">Seed requests to populate recent pipeline analytics.</TableCell></TableRow>}</TableBody></Table></div>;
 }
 
 function PipelineGroup({ label, values }: { label: string; values: string[] }) {
@@ -178,7 +181,7 @@ function PipelineGroup({ label, values }: { label: string; values: string[] }) {
 
 function Summary({ label, value, detail, tone }: { label: string; value: string | number; detail: string; tone?: 'success' | 'warning' | 'error' }) {
   const className = tone ? `collector-summary__item--${tone}` : undefined;
-  return <article className={className}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
+  return <Card asChild className={className}><article><span>{label}</span><strong>{value}</strong><small>{detail}</small></article></Card>;
 }
 
 function Metric({ label, value }: { label: string; value: string | number }) {

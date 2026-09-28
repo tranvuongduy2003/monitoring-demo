@@ -1,7 +1,10 @@
 import type { useOtlpDashboard } from '@/domains/otlp/hooks/useOtlpDashboard';
 import type { OtlpProtocolDefinition, OtlpTimelinePoint } from '@/domains/otlp/types';
 import { SectionHeading } from '@/shared/components/SectionHeading';
-import { StatusBadge } from '@/shared/components/StatusBadge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 
 type OtlpDashboardModel = ReturnType<typeof useOtlpDashboard>;
 
@@ -22,10 +25,10 @@ export function OtlpDashboard({ model }: { model: OtlpDashboardModel }) {
           : 'Loading the OTLP transport pipeline...'}
         actions={(
           <>
-          <StatusBadge active={Boolean(data)} activeLabel="Transport configured" inactiveLabel="Connecting" />
-          <button type="button" onClick={() => void seedOtlp()} disabled={seeding}>
+          <Badge variant={data ? 'success' : 'secondary'} className={`status ${data ? 'online' : ''}`}><span className="status-dot" aria-hidden="true" />{data ? 'Transport configured' : 'Connecting'}</Badge>
+          <Button type="button" onClick={() => void seedOtlp()} disabled={seeding}>
             {seeding ? 'Seeding...' : 'Seed 120 OTLP batches'}
-          </button>
+          </Button>
           </>
         )}
       />
@@ -86,24 +89,24 @@ export function OtlpDashboard({ model }: { model: OtlpDashboardModel }) {
         </div>
 
         <div className="table-wrap compact-table otlp-batches">
-          <table>
-            <thead><tr><th>Batch</th><th>Signal</th><th>Transport</th><th>Destination</th><th>Records</th><th>Size</th><th>Latency</th><th>Status</th></tr></thead>
-            <tbody>
+          <Table>
+            <TableHeader><TableRow><TableHead>Batch</TableHead><TableHead>Signal</TableHead><TableHead>Transport</TableHead><TableHead>Destination</TableHead><TableHead>Records</TableHead><TableHead>Size</TableHead><TableHead>Latency</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+            <TableBody>
               {data?.analytics.recentBatches.map(batch => (
-                <tr key={batch.batchId}>
-                  <td><code>{batch.batchId}</code></td>
-                  <td>{batch.signal}</td>
-                  <td><ProtocolPill protocol={batch.protocol} /></td>
-                  <td>{batch.destination}</td>
-                  <td>{batch.recordCount}</td>
-                  <td>{bytes(batch.wireBytes)}</td>
-                  <td>{duration(batch.durationMilliseconds)}</td>
-                  <td><span className={`otlp-batch-status ${batch.status.toLowerCase()}`}>{batch.status}</span></td>
-                </tr>
+                <TableRow key={batch.batchId}>
+                  <TableCell><code>{batch.batchId}</code></TableCell>
+                  <TableCell>{batch.signal}</TableCell>
+                  <TableCell><ProtocolPill protocol={batch.protocol} /></TableCell>
+                  <TableCell>{batch.destination}</TableCell>
+                  <TableCell>{batch.recordCount}</TableCell>
+                  <TableCell>{bytes(batch.wireBytes)}</TableCell>
+                  <TableCell>{duration(batch.durationMilliseconds)}</TableCell>
+                  <TableCell><Badge variant={batch.status.toLowerCase() === 'success' ? 'success' : 'destructive'} className={`otlp-batch-status ${batch.status.toLowerCase()}`}>{batch.status}</Badge></TableCell>
+                </TableRow>
               ))}
-              {!data?.analytics.recentBatches.length && <tr><td colSpan={8} className="empty">Seed OTLP batches to populate export analytics.</td></tr>}
-            </tbody>
-          </table>
+              {!data?.analytics.recentBatches.length && <TableRow><TableCell colSpan={8} className="empty">Seed OTLP batches to populate export analytics.</TableCell></TableRow>}
+            </TableBody>
+          </Table>
         </div>
       </section>
 
@@ -115,21 +118,21 @@ export function OtlpDashboard({ model }: { model: OtlpDashboardModel }) {
         <p className="muted">This table reports the effective non-secret endpoint settings visible to the API process. Authentication header values are intentionally never returned.</p>
 
         <div className="table-wrap compact-table">
-          <table>
-            <thead><tr><th>Destination</th><th>Signals</th><th>Protocol</th><th>Endpoint</th><th>Source</th><th>State</th></tr></thead>
-            <tbody>
+          <Table>
+            <TableHeader><TableRow><TableHead>Destination</TableHead><TableHead>Signals</TableHead><TableHead>Protocol</TableHead><TableHead>Endpoint</TableHead><TableHead>Source</TableHead><TableHead>State</TableHead></TableRow></TableHeader>
+            <TableBody>
               {data?.endpoints.map(endpoint => (
-                <tr key={`${endpoint.destination}-${endpoint.signals}`} title={endpoint.note}>
-                  <td><strong>{endpoint.destination}</strong></td>
-                  <td>{endpoint.signals}</td>
-                  <td><ProtocolPill protocol={endpoint.protocol} /></td>
-                  <td><code className="otlp-endpoint-value">{endpoint.endpoint}</code></td>
-                  <td><code>{endpoint.source}</code></td>
-                  <td><span className={`otlp-config-state${endpoint.configured ? ' configured' : ''}`}>{endpoint.configured ? 'Configured' : 'Fallback'}</span></td>
-                </tr>
+                <TableRow key={`${endpoint.destination}-${endpoint.signals}`} title={endpoint.note}>
+                  <TableCell><strong>{endpoint.destination}</strong></TableCell>
+                  <TableCell>{endpoint.signals}</TableCell>
+                  <TableCell><ProtocolPill protocol={endpoint.protocol} /></TableCell>
+                  <TableCell><code className="otlp-endpoint-value">{endpoint.endpoint}</code></TableCell>
+                  <TableCell><code>{endpoint.source}</code></TableCell>
+                  <TableCell><Badge variant={endpoint.configured ? 'success' : 'secondary'} className={`otlp-config-state${endpoint.configured ? ' configured' : ''}`}>{endpoint.configured ? 'Configured' : 'Fallback'}</Badge></TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         <div className="otlp-precedence">
@@ -212,7 +215,7 @@ function ProtocolTimeline({ points }: { points: OtlpTimelinePoint[] }) {
 }
 
 function Summary({ label, value, detail, tone = '' }: { label: string; value: string | number; detail: string; tone?: string }) {
-  return <article className={tone}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
+  return <Card asChild className={tone}><article><span>{label}</span><strong>{value}</strong><small>{detail}</small></article></Card>;
 }
 
 function Metric({ label, value }: { label: string; value: string | number }) {
@@ -233,7 +236,7 @@ function FlowArrow({ label }: { label: string }) {
 
 function ProtocolPill({ protocol }: { protocol: string }) {
   const isGrpc = protocol === 'gRPC';
-  return <span className={`otlp-protocol-pill ${isGrpc ? 'grpc' : 'http'}`}>{protocol}</span>;
+  return <Badge variant="outline" className={`otlp-protocol-pill ${isGrpc ? 'grpc' : 'http'}`}>{protocol}</Badge>;
 }
 
 function duration(milliseconds: number): string {

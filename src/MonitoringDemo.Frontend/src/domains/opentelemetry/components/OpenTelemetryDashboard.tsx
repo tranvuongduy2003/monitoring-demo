@@ -1,7 +1,10 @@
 import type { useOpenTelemetryDashboard } from '@/domains/opentelemetry/hooks/useOpenTelemetryDashboard';
 import type { OpenTelemetryTimelinePoint } from '@/domains/opentelemetry/types';
 import { SectionHeading } from '@/shared/components/SectionHeading';
-import { StatusBadge } from '@/shared/components/StatusBadge';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 type OpenTelemetryDashboardModel = ReturnType<typeof useOpenTelemetryDashboard>;
 
@@ -20,10 +23,10 @@ export function OpenTelemetryDashboard({ model }: { model: OpenTelemetryDashboar
           : 'Loading the OpenTelemetry pipeline...'}
         actions={(
           <>
-          <StatusBadge active={Boolean(data)} activeLabel="SDK configured" inactiveLabel="Connecting" />
-          <button type="button" onClick={() => void seedTelemetry()} disabled={seeding}>
+          <Badge variant={data ? 'success' : 'secondary'} className={`status ${data ? 'online' : ''}`}><span className="status-dot" aria-hidden="true" />{data ? 'SDK configured' : 'Connecting'}</Badge>
+          <Button type="button" onClick={() => void seedTelemetry()} disabled={seeding}>
             {seeding ? 'Seeding...' : 'Seed 100 multi-signal operations'}
-          </button>
+          </Button>
           </>
         )}
       />
@@ -72,20 +75,20 @@ export function OpenTelemetryDashboard({ model }: { model: OpenTelemetryDashboar
         <div>
           <h3>Operation analytics</h3>
           <div className="table-wrap compact-table">
-            <table>
-              <thead><tr><th>Operation</th><th>Runs</th><th>Errors</th><th>Average</th></tr></thead>
-              <tbody>
+            <Table>
+              <TableHeader><TableRow><TableHead>Operation</TableHead><TableHead>Runs</TableHead><TableHead>Errors</TableHead><TableHead>Average</TableHead></TableRow></TableHeader>
+              <TableBody>
                 {data?.analytics.operations.map(operation => (
-                  <tr key={operation.operation}>
-                    <td><code>{operation.operation}</code></td>
-                    <td>{operation.count}</td>
-                    <td>{operation.errorCount}</td>
-                    <td>{duration(operation.averageDurationMilliseconds)}</td>
-                  </tr>
+                  <TableRow key={operation.operation}>
+                    <TableCell><code>{operation.operation}</code></TableCell>
+                    <TableCell>{operation.count}</TableCell>
+                    <TableCell>{operation.errorCount}</TableCell>
+                    <TableCell>{duration(operation.averageDurationMilliseconds)}</TableCell>
+                  </TableRow>
                 ))}
-                {!data?.analytics.operations.length && <tr><td colSpan={4} className="empty">Waiting for seed data.</td></tr>}
-              </tbody>
-            </table>
+                {!data?.analytics.operations.length && <TableRow><TableCell colSpan={4} className="empty">Waiting for seed data.</TableCell></TableRow>}
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>
@@ -183,7 +186,7 @@ export function OpenTelemetryDashboard({ model }: { model: OpenTelemetryDashboar
 
 function Summary({ label, value, detail, tone }: { label: string; value: string | number; detail: string; tone?: 'trace' | 'metric' | 'log' | 'error' }) {
   const className = tone ? `otel-summary__item--${tone}` : undefined;
-  return <article className={className}><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
+  return <Card asChild className={className}><article><span>{label}</span><strong>{value}</strong><small>{detail}</small></article></Card>;
 }
 
 function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {

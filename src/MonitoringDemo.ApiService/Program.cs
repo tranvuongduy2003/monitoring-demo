@@ -1,95 +1,14 @@
-using MonitoringDemo.ApiService.Data;
-using MonitoringDemo.ApiService.Endpoints;
-using MonitoringDemo.ApiService.Middleware;
-using MonitoringDemo.ApiService.Observability;
-using MonitoringDemo.ApiService.Services;
-using MonitoringDemo.ApiService.Telemetry;
+using MonitoringDemo.ApiService.Hosting;
 using MonitoringDemo.ServiceDefaults;
 
 EnvironmentFile.LoadForProject("MonitoringDemo.ApiService");
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
-
-builder.AddNpgsqlDbContext<AppDbContext>("monitoringdb");
-
-builder.Services.AddSingleton<AppMetrics>();
-builder.Services.AddSingleton<MonitoringMethodologyMetrics>();
-builder.Services.AddSingleton<ApplicationMonitoringMetrics>();
-builder.Services.AddSingleton<AppActivitySource>();
-builder.Services.AddSingleton<MetricsDemoSeeder>();
-builder.Services.AddSingleton<MonitoringMethodologySeeder>();
-builder.Services.AddSingleton<ApplicationMonitoringSeeder>();
-builder.Services.AddSingleton<TracingDemoSeeder>();
-builder.Services.AddSingleton<OpenTelemetryLabService>();
-builder.Services.AddSingleton<OtlpLabService>();
-builder.Services.AddSingleton<CollectorLabService>();
-builder.Services.AddSingleton<GrafanaLabService>();
-builder.Services.AddSingleton<FundamentalAlertingService>();
-builder.Services.AddHostedService<BackgroundOrderSimulator>();
-builder.Services.AddHostedService<LoggingSeedService>();
-builder.Services.AddHostedService<MetricsSeedService>();
-builder.Services.AddHostedService<MonitoringMethodologySeedService>();
-builder.Services.AddHostedService<ApplicationMonitoringSeedService>();
-builder.Services.AddHostedService<TracingSeedService>();
-builder.Services.AddHostedService<OpenTelemetrySeedService>();
-builder.Services.AddHostedService<OtlpSeedService>();
-builder.Services.AddHostedService<CollectorSeedService>();
-builder.Services.AddHostedService<GrafanaSeedService>();
-builder.Services.AddHostedService<FundamentalAlertingSeedService>();
-builder.Services.AddHttpClient<LokiQueryService>();
-builder.Services.AddHttpClient<PrometheusQueryService>();
-builder.Services.AddHttpClient<TempoQueryService>();
-
-builder.Services.AddCors(options =>
-{
-    string[] allowedOrigins = builder.Configuration
-        .GetValue<string>("Cors:AllowedOrigins")?
-        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-        ?? ["*"];
-
-    options.AddPolicy("Frontend", policy =>
-    {
-        if (allowedOrigins.Contains("*"))
-        {
-            policy.AllowAnyOrigin();
-        }
-        else
-        {
-            policy.WithOrigins(allowedOrigins);
-        }
-
-        policy.AllowAnyMethod().AllowAnyHeader();
-    });
-});
+builder.AddApiServices();
 
 var app = builder.Build();
-
-app.UseCors("Frontend");
-app.UseMiddleware<LogContextMiddleware>();
-app.MapDefaultEndpoints();
-
-app.MapProductEndpoints();
-app.MapOrderEndpoints();
-app.MapLoggingEndpoints();
-app.MapMetricsEndpoints();
-app.MapMonitoringMethodologyEndpoints();
-app.MapApplicationMonitoringEndpoints();
-app.MapPrometheusEndpoints();
-app.MapTracingEndpoints();
-app.MapOpenTelemetryEndpoints();
-app.MapOtlpEndpoints();
-app.MapCollectorEndpoints();
-app.MapGrafanaEndpoints();
-app.MapDemoEndpoints();
-
-try 
-{
-    await SeedData.InitializeAsync(app.Services);
-}
-catch (Exception ex)
-{
-    app.Logger.DatabaseSeedFailed(ex);
-}
+app.UseApi();
+await app.InitializeApiAsync();
 
 app.Run();

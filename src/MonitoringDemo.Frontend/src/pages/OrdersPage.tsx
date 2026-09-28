@@ -2,7 +2,8 @@ import { useDemoReset } from '@/domains/demo/hooks/useDemoReset';
 import { OrdersDashboard } from '@/domains/orders/components/OrdersDashboard';
 import { useOrdersDashboard } from '@/domains/orders/hooks/useOrdersDashboard';
 import { PageHeader } from '@/shared/components/PageHeader';
-import { StatusBadge } from '@/shared/components/StatusBadge';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 export function OrdersPage() {
   const orders = useOrdersDashboard();
@@ -20,9 +21,9 @@ export function OrdersPage() {
         description="Track live business activity and create test traffic for the observability pipeline."
         actions={
           <>
-            <StatusBadge active={connected} activeLabel="API connected" inactiveLabel={connectionLabel} />
-            <button
-              className="danger secondary"
+            <Badge variant={connected ? 'success' : 'secondary'} className={`status ${connected ? 'online' : ''}`}><span className="status-dot" aria-hidden="true" />{connected ? 'API connected' : connectionLabel}</Badge>
+            <Button
+              variant="destructive"
               type="button"
               onClick={() => {
                 const confirmed = window.confirm(
@@ -34,10 +35,10 @@ export function OrdersPage() {
               disabled={orders.creating || reset.clearing}
             >
               {reset.clearing ? 'Clearing...' : 'Clear data'}
-            </button>
-            <button type="button" onClick={() => void orders.createTestOrder()} disabled={orders.creating || reset.clearing}>
+            </Button>
+            <Button type="button" onClick={() => void orders.createTestOrder()} disabled={orders.creating || reset.clearing}>
               {orders.creating ? 'Creating...' : 'Create test order'}
-            </button>
+            </Button>
           </>
         }
       />

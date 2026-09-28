@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react';
 export type AppRoute =
   | 'overview'
   | 'orders'
+  | 'application'
   | 'opentelemetry'
   | 'otlp'
   | 'collector'
@@ -29,6 +30,7 @@ const navigationGroups: { label: string; items: NavigationItem[] }[] = [
       { route: 'otlp', label: 'OTLP', icon: 'otlp' },
       { route: 'collector', label: 'Collector', icon: 'collector' },
       { route: 'metrics', label: 'Metrics', icon: 'metrics' },
+      { route: 'application', label: 'Application', icon: 'application' },
       { route: 'methodologies', label: 'Methodologies', icon: 'methodologies' },
       { route: 'prometheus', label: 'Prometheus', icon: 'prometheus' },
       { route: 'logs', label: 'Logs', icon: 'logs' },
@@ -93,7 +95,7 @@ export function AppShell({ activeRoute, children }: { activeRoute: AppRoute; chi
   );
 }
 
-type IconName = 'overview' | 'orders' | 'telemetry' | 'otlp' | 'collector' | 'metrics' | 'methodologies' | 'prometheus' | 'logs' | 'traces' | 'grafana' | 'learn';
+type IconName = 'overview' | 'orders' | 'telemetry' | 'otlp' | 'collector' | 'metrics' | 'application' | 'methodologies' | 'prometheus' | 'logs' | 'traces' | 'grafana' | 'learn';
 
 function NavIcon({ name }: { name: IconName }) {
   const paths: Record<IconName, ReactNode> = {
@@ -103,6 +105,7 @@ function NavIcon({ name }: { name: IconName }) {
     otlp: <><path d="M4 8h11M9 4l-5 4 5 4M20 16H9m6-4 5 4-5 4" /><circle cx="12" cy="8" r="1" /><circle cx="12" cy="16" r="1" /></>,
     collector: <><path d="M4 5h16v4H4zM4 15h16v4H4z" /><path d="M8 9v6m8-6v6" /><circle cx="8" cy="7" r="1" /><circle cx="16" cy="17" r="1" /></>,
     metrics: <path d="M4 20V10m5 10V4m6 16v-7m5 7V7" />,
+    application: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 9h3l2 6 2-4h3" /></>,
     methodologies: <><circle cx="6" cy="7" r="3" /><circle cx="18" cy="7" r="3" /><circle cx="12" cy="18" r="3" /><path d="m8.5 9 2 6m5-6-2 6M9 7h6" /></>,
     prometheus: <><path d="M12 3c2 4-1 5 2 8 1-2 3-3 3-6 3 3 4 6 3 9-1 5-5 7-8 7s-7-2-8-7c-1-4 2-7 5-10 0 3 1 5 3 6 2-3-1-4 0-7Z" /><path d="M8 16h8" /></>,
     logs: <><path d="M5 3h14v18H5z" /><path d="M8 8h8M8 12h8M8 16h5" /></>,

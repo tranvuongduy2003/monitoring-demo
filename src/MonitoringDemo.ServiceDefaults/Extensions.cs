@@ -127,6 +127,14 @@ public static class Extensions
                         {
                             Boundaries = [50, 100, 200, 500, 1_000, 2_000, 5_000]
                         })
+                    .AddView(instrument =>
+                        instrument.Name.EndsWith("_duration_ms", StringComparison.Ordinal) &&
+                        instrument.Name.StartsWith("application_", StringComparison.Ordinal)
+                            ? new ExplicitBucketHistogramConfiguration
+                            {
+                                Boundaries = [1, 5, 10, 25, 50, 100, 250, 500, 1_000, 2_500]
+                            }
+                            : null)
                     .AddPrometheusExporter();
 
                 if (hasStandardOtlpMetricsEndpoint)

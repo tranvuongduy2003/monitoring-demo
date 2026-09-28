@@ -32,6 +32,16 @@ groups:
         labels:
           workload: methodology-lab
 
+      - record: job:application_http_error_ratio:rate5m
+        expr: sum by (job) (rate(application_http_request_errors_total[5m])) / clamp_min(sum by (job) (rate(application_http_requests_total[5m])), 0.001)
+        labels:
+          workload: application-monitoring
+
+      - record: job:application_cache_hit_ratio:rate5m
+        expr: sum by (job) (rate(application_cache_operations_total{cache_outcome="hit"}[5m])) / clamp_min(sum by (job) (rate(application_cache_operations_total{cache_outcome=~"hit|miss"}[5m])), 0.001)
+        labels:
+          workload: application-monitoring
+
   - name: monitoring-demo-alerting
     interval: 15s
     rules:
@@ -79,3 +89,21 @@ groups:
         annotations:
           summary: A methodology lab resource is saturated
           description: Resource {{ $labels.resource }} has remained above 85% saturation.
+
+      - alert: ApplicationDependencyFailureRatioHigh
+        expr: sum by (job, server_address) (rate(application_dependency_call_errors_total[5m])) / clamp_min(sum by (job, server_address) (rate(application_dependency_calls_total[5m])), 0.001) > 0.20
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Application dependency failure ratio is high
+          description: Dependency {{ $labels.server_address }} has exceeded a 20% failure ratio.
+
+      - alert: ApplicationCacheHitRatioLow
+        expr: job:application_cache_hit_ratio:rate5m{job="apiservice"} < 0.50
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Application cache hit ratio is low
+          description: The five-minute cache hit ratio is {{ $value | humanizePercentage }}.

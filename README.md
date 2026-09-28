@@ -61,6 +61,8 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 ## Features
 
 - Custom OpenTelemetry counters, gauges, histograms, traces, and structured logs
+- Complete application monitoring lab covering HTTP, database, cache, dependencies, custom metrics, custom spans, and typed errors
+- Healthy, cache-pressure, and dependency-outage seed scenarios with windowed analytics, live React visualizations, PromQL examples, alerts, and a provisioned Grafana dashboard
 - Dedicated monitoring methodologies lab covering RED, USE, and the Four Golden Signals with correlated request/resource analytics
 - Repeatable baseline, traffic-spike, and failure-burst seeding plus continuous Prometheus-ready samples and a provisioned Grafana dashboard
 - Dedicated OpenTelemetry architecture lab covering the API, SDK, automatic and manual instrumentation, resources, semantic conventions, Tracer, Meter, Logger, and W3C propagators

@@ -12,10 +12,12 @@ import { OverviewPage } from '@/pages/OverviewPage';
 import { PrometheusPage } from '@/pages/PrometheusPage';
 import { TracesPage } from '@/pages/TracesPage';
 import { GrafanaPage } from '@/pages/GrafanaPage';
+import { ApplicationMonitoringPage } from '@/pages/ApplicationMonitoringPage';
 
 const pages: Record<AppRoute, { title: string; content: ReactNode }> = {
   overview: { title: 'Overview', content: <OverviewPage /> },
   orders: { title: 'Orders', content: <OrdersPage /> },
+  application: { title: 'Application Monitoring', content: <ApplicationMonitoringPage /> },
   opentelemetry: { title: 'OpenTelemetry', content: <OpenTelemetryPage /> },
   otlp: { title: 'OTLP', content: <OtlpPage /> },
   collector: { title: 'OpenTelemetry Collector', content: <CollectorPage /> },

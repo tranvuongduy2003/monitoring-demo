@@ -4,6 +4,7 @@ import { CollectorPage } from '@/pages/CollectorPage';
 import { LearnPage } from '@/pages/LearnPage';
 import { LogsPage } from '@/pages/LogsPage';
 import { MetricsPage } from '@/pages/MetricsPage';
+import { MethodologiesPage } from '@/pages/MethodologiesPage';
 import { OpenTelemetryPage } from '@/pages/OpenTelemetryPage';
 import { OtlpPage } from '@/pages/OtlpPage';
 import { OrdersPage } from '@/pages/OrdersPage';
@@ -19,6 +20,7 @@ const pages: Record<AppRoute, { title: string; content: ReactNode }> = {
   otlp: { title: 'OTLP', content: <OtlpPage /> },
   collector: { title: 'OpenTelemetry Collector', content: <CollectorPage /> },
   metrics: { title: 'Metrics', content: <MetricsPage /> },
+  methodologies: { title: 'Monitoring Methodologies', content: <MethodologiesPage /> },
   prometheus: { title: 'Prometheus', content: <PrometheusPage /> },
   logs: { title: 'Logs', content: <LogsPage /> },
   traces: { title: 'Traces', content: <TracesPage /> },

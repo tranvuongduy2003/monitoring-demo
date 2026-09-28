@@ -4,6 +4,7 @@ const apiUrl = trimTrailingSlash(import.meta.env.VITE_API_PUBLIC_URL ?? 'http://
 
 const tools = [
   ['Grafana', grafanaUrl],
+  ['Methodologies dashboard', `${grafanaUrl}/d/monitoring-methodologies`],
   ['Loki Explore', `${grafanaUrl}/explore`],
   ['Tempo Traces', `${grafanaUrl}/a/grafana-exploretraces-app/explore?var-ds=tempo`],
   ['Prometheus', prometheusUrl],

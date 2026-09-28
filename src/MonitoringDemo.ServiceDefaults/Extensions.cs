@@ -121,6 +121,12 @@ public static class Extensions
                         {
                             Boundaries = [50, 100, 200, 500, 1_000, 2_000]
                         })
+                    .AddView(
+                        "methodology_service_request_duration_ms",
+                        new ExplicitBucketHistogramConfiguration
+                        {
+                            Boundaries = [50, 100, 200, 500, 1_000, 2_000, 5_000]
+                        })
                     .AddPrometheusExporter();
 
                 if (hasStandardOtlpMetricsEndpoint)

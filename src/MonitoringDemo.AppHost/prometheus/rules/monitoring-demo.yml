@@ -17,6 +17,21 @@ groups:
         labels:
           workload: orders
 
+      - record: job:methodology_request_rate:rate5m
+        expr: sum by (job) (rate(methodology_service_requests_total[5m]))
+        labels:
+          workload: methodology-lab
+
+      - record: job:methodology_error_ratio:rate5m
+        expr: sum by (job) (rate(methodology_service_request_errors_total[5m])) / clamp_min(sum by (job) (rate(methodology_service_requests_total[5m])), 0.001)
+        labels:
+          workload: methodology-lab
+
+      - record: job:methodology_duration_ms:p95_5m
+        expr: histogram_quantile(0.95, sum by (job, le) (rate(methodology_service_request_duration_ms_bucket[5m])))
+        labels:
+          workload: methodology-lab
+
   - name: monitoring-demo-alerting
     interval: 15s
     rules:
@@ -46,3 +61,21 @@ groups:
         annotations:
           summary: Order p95 processing latency is high
           description: The five-minute p95 order latency is {{ $value }} ms.
+
+      - alert: HighMethodologyErrorRatio
+        expr: job:methodology_error_ratio:rate5m{job="apiservice"} > 0.15
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Methodology lab error ratio is above 15%
+          description: The seeded five-minute service error ratio is {{ $value | humanizePercentage }}.
+
+      - alert: HighMethodologyResourceSaturation
+        expr: max by (job, resource) (methodology_resource_saturation_ratio{job="apiservice"}) > 0.85
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: A methodology lab resource is saturated
+          description: Resource {{ $labels.resource }} has remained above 85% saturation.

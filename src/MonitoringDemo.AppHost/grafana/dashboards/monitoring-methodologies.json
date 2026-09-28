@@ -1,0 +1,110 @@
+{
+  "uid": "monitoring-methodologies",
+  "title": "Monitoring Methodologies - RED, USE & Golden Signals",
+  "tags": ["methodologies", "red", "use", "golden-signals", "prometheus"],
+  "refresh": "5s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "scenario",
+        "label": "Scenario",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values(methodology_service_requests_total, scenario)", "refId": "PrometheusVariableQueryEditor-VariableQuery" },
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "row", "title": "RED - Rate, Errors, Duration", "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "panels": []
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Rate - requests per second",
+      "description": "RED rate grouped by operation for the selected seeded scenario.",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+      "targets": [{ "refId": "A", "expr": "sum by (operation) (rate(methodology_service_requests_total{scenario=~\"$scenario\"}[$__rate_interval]))", "legendFormat": "{{operation}}" }],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] }
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Errors - request error ratio",
+      "description": "RED errors as a ratio of all service requests.",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
+      "targets": [{ "refId": "A", "expr": "sum(rate(methodology_service_request_errors_total{scenario=~\"$scenario\"}[$__rate_interval])) / clamp_min(sum(rate(methodology_service_requests_total{scenario=~\"$scenario\"}[$__rate_interval])), 0.001)", "legendFormat": "error ratio" }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 0.15 }] } }, "overrides": [] }
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Duration - p50 / p95 / p99",
+      "description": "RED duration calculated from aggregatable histogram buckets.",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le) (rate(methodology_service_request_duration_ms_bucket{scenario=~\"$scenario\"}[$__rate_interval])))", "legendFormat": "p50" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(methodology_service_request_duration_ms_bucket{scenario=~\"$scenario\"}[$__rate_interval])))", "legendFormat": "p95" },
+        { "refId": "C", "expr": "histogram_quantile(0.99, sum by (le) (rate(methodology_service_request_duration_ms_bucket{scenario=~\"$scenario\"}[$__rate_interval])))", "legendFormat": "p99" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] }
+    },
+    {
+      "id": 5, "type": "row", "title": "USE - Utilization, Saturation, Errors", "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }, "panels": []
+    },
+    {
+      "id": 6, "type": "gauge", "title": "Utilization by resource",
+      "description": "Current percentage of resource capacity in use.",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 10 },
+      "targets": [{ "refId": "A", "expr": "methodology_resource_utilization_ratio{scenario=~\"$scenario\"} * 100", "legendFormat": "{{resource}}" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 65 }, { "color": "red", "value": 85 }] } }, "overrides": [] }
+    },
+    {
+      "id": 7, "type": "gauge", "title": "Saturation by resource",
+      "description": "Queued or constrained work, shown as a percentage.",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 10 },
+      "targets": [{ "refId": "A", "expr": "methodology_resource_saturation_ratio{scenario=~\"$scenario\"} * 100", "legendFormat": "{{resource}}" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 65 }, { "color": "red", "value": 85 }] } }, "overrides": [] }
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Resource errors",
+      "description": "USE errors grouped by the failing resource.",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 10 },
+      "targets": [{ "refId": "A", "expr": "sum by (resource) (increase(methodology_resource_errors_total{scenario=~\"$scenario\"}[$__rate_interval]))", "legendFormat": "{{resource}}" }]
+    },
+    {
+      "id": 9, "type": "row", "title": "Four Golden Signals", "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 }, "panels": []
+    },
+    {
+      "id": 10, "type": "stat", "title": "Latency (p95)",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 19 },
+      "targets": [{ "refId": "A", "expr": "histogram_quantile(0.95, sum by (le) (rate(methodology_service_request_duration_ms_bucket{scenario=~\"$scenario\"}[$__rate_interval])))" }],
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" }
+    },
+    {
+      "id": 11, "type": "stat", "title": "Traffic",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 19 },
+      "targets": [{ "refId": "A", "expr": "sum(rate(methodology_service_requests_total{scenario=~\"$scenario\"}[$__rate_interval]))" }],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" }
+    },
+    {
+      "id": 12, "type": "stat", "title": "Errors",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 19 },
+      "targets": [{ "refId": "A", "expr": "sum(rate(methodology_service_request_errors_total{scenario=~\"$scenario\"}[$__rate_interval])) / clamp_min(sum(rate(methodology_service_requests_total{scenario=~\"$scenario\"}[$__rate_interval])), 0.001)" }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" }
+    },
+    {
+      "id": 13, "type": "stat", "title": "Saturation",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 19 },
+      "targets": [{ "refId": "A", "expr": "max(methodology_resource_saturation_ratio{scenario=~\"$scenario\"})" }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area" }
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}

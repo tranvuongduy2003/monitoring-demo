@@ -7,6 +7,7 @@ const areas = [
   { route: 'otlp', label: 'OTLP', description: 'Compare gRPC and HTTP export paths, live batches, and endpoint configuration.', accent: 'blue', value: 'Telemetry transport' },
   { route: 'collector', label: 'Collector', description: 'Route signals through receivers, processors, pipelines, and exporters.', accent: 'violet', value: 'Control plane' },
   { route: 'metrics', label: 'Metrics', description: 'Inspect counters, gauges, histograms, labels, and cardinality.', accent: 'cyan', value: 'Measurements' },
+  { route: 'methodologies', label: 'Methodologies', description: 'Diagnose one seeded workload with RED, USE, and the Four Golden Signals.', accent: 'blue', value: 'Diagnostic lenses' },
   { route: 'prometheus', label: 'Prometheus', description: 'Understand scraping, PromQL, recording rules, alerts, and TSDB.', accent: 'orange', value: 'Time series' },
   { route: 'logs', label: 'Logs', description: 'Generate structured events and investigate them with LogQL.', accent: 'emerald', value: 'Events' },
   { route: 'traces', label: 'Traces', description: 'Follow distributed requests through spans and context propagation.', accent: 'rose', value: 'Request journeys' },

@@ -61,6 +61,8 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 ## Features
 
 - Custom OpenTelemetry counters, gauges, histograms, traces, and structured logs
+- Dedicated monitoring methodologies lab covering RED, USE, and the Four Golden Signals with correlated request/resource analytics
+- Repeatable baseline, traffic-spike, and failure-burst seeding plus continuous Prometheus-ready samples and a provisioned Grafana dashboard
 - Dedicated OpenTelemetry architecture lab covering the API, SDK, automatic and manual instrumentation, resources, semantic conventions, Tracer, Meter, Logger, and W3C propagators
 - Repeatable multi-signal OpenTelemetry seeding with an in-process timeline, per-operation analytics, error counts, and latency statistics
 - Dedicated OTLP transport lab covering OTLP, OTLP/gRPC, OTLP/HTTP, signal paths, ports, endpoint precedence, and live non-secret configuration

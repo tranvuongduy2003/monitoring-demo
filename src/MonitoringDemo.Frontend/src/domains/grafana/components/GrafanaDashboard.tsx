@@ -1,16 +1,17 @@
 import type { useGrafanaDashboard } from '@/domains/grafana/hooks/useGrafanaDashboard';
-import type { GrafanaAnalytics, GrafanaTimelinePoint } from '@/domains/grafana/types';
+import type { CorrelationTimelinePoint, GrafanaAnalytics, GrafanaTimelinePoint } from '@/domains/grafana/types';
 import { SectionHeading } from '@/shared/components/SectionHeading';
 
 type GrafanaDashboardModel = ReturnType<typeof useGrafanaDashboard>;
 
 const grafanaUrl = (import.meta.env.VITE_GRAFANA_URL ?? 'http://localhost:3000').replace(/\/$/, '');
-const sections = ['data-sources', 'dashboards', 'panels', 'queries', 'variables', 'explore', 'annotations', 'alerting'] as const;
+const sections = ['data-sources', 'dashboards', 'panels', 'queries', 'variables', 'explore', 'annotations', 'alerting', 'correlation'] as const;
 
 export function GrafanaDashboard({ model }: { model: GrafanaDashboardModel }) {
-  const { overview, seeding, seedResult, error, seedGrafana } = model;
+  const { overview, seeding, seedResult, correlationSeeding, correlationSeedResult, error, seedGrafana, seedCorrelations } = model;
   const data = overview.data;
   const analytics = data?.analytics;
+  const correlation = data?.correlationAnalytics;
 
   return (
     <section className="panel learning-panel grafana-lab" aria-labelledby="grafana-heading">
@@ -23,7 +24,8 @@ export function GrafanaDashboard({ model }: { model: GrafanaDashboardModel }) {
       />
 
       {(overview.error || error) && <p className="error panel-notice" role="alert">{error || 'Grafana analytics could not be loaded. Automatic retry is active.'}</p>}
-      {seedResult && <p className="notice panel-notice" role="status">Run {seedResult.run} added {seedResult.seeded} queries and {seedResult.traceCount} correlated traces to the visualization dataset.</p>}
+      {seedResult && <p className="notice panel-notice" role="status">Run {seedResult.run} added {seedResult.seeded} queries, {seedResult.traceCount} traces, and {seedResult.correlationCount} fully correlated operations.</p>}
+      {correlationSeedResult && <p className="notice panel-notice" role="status">Correlation run {correlationSeedResult.run} emitted {correlationSeedResult.seeded} operations across logs, metrics, traces, and exemplars.</p>}
 
       <div className="grafana-summary" aria-label="Grafana analytics summary">
         <Summary label="Queries" value={analytics?.queryCount.toLocaleString() ?? '--'} detail="last 60 minutes" />
@@ -95,6 +97,60 @@ export function GrafanaDashboard({ model }: { model: GrafanaDashboardModel }) {
         <div className="grafana-alert-grid">{data?.alerting.map(alert => <article key={alert.uid}><div><span className={`grafana-alert-state ${alert.state.toLowerCase()}`}>{alert.state}</span><small>{alert.source}</small></div><h3>{alert.title}</h3><code>{alert.query}</code><dl><div><dt>Condition</dt><dd>{alert.condition}</dd></div><div><dt>For</dt><dd>{alert.for}</dd></div><div><dt>No data</dt><dd>{alert.noDataState}</dd></div></dl></article>)}</div>
       </LabSection>
 
+      <LabSection id="grafana-correlation" eyebrow="09 · Correlation" title="Move between logs, metrics, and traces without losing context" description="The seed path emits real logs and measurements inside sampled spans. The same trace and span identities are retained by Loki, Prometheus exemplars, and Tempo so every pivot can be tested in Grafana.">
+        <div className="correlation-actions">
+          <div>
+            <strong>Live correlation dataset</strong>
+            <span>{correlation?.operationCount ?? 0} operations available in the current 60-minute analytics window</span>
+          </div>
+          <button type="button" onClick={() => void seedCorrelations()} disabled={correlationSeeding}>{correlationSeeding ? 'Seeding correlated signals...' : 'Seed 24 correlated operations'}</button>
+        </div>
+
+        <div className="correlation-summary" aria-label="Correlation analytics summary">
+          <Summary label="Operations" value={correlation?.operationCount ?? '--'} detail="seeded transactions" />
+          <Summary label="Logs" value={correlation?.logCount ?? '--'} detail="trace-aware events" />
+          <Summary label="Metric points" value={correlation?.metricPointCount ?? '--'} detail="inside active spans" />
+          <Summary label="Exemplars" value={correlation?.exemplarCount ?? '--'} detail="trace candidates" tone="success" />
+          <Summary label="Trace IDs" value={correlation?.uniqueTraceIds ?? '--'} detail="128-bit identities" />
+          <Summary label="Span IDs" value={correlation?.uniqueSpanIds ?? '--'} detail="64-bit identities" />
+        </div>
+
+        <div className="correlation-flow" aria-label="Cross-signal correlation flow">
+          <Flow label="Loki logs" detail="trace_id · span_id" /><b>↔</b>
+          <Flow label="Tempo trace" detail="span waterfall" /><b>↔</b>
+          <Flow label="Prometheus" detail="exemplar diamond" />
+        </div>
+
+        <div className="correlation-analytics">
+          <div>
+            <h3>Correlated operations by minute</h3>
+            <CorrelationTimeline points={correlation?.timeline.slice(-40) ?? []} />
+            <div className="grafana-legend"><span className="queries">Operations</span><span className="errors">Failures</span><span className="markers">Exemplars</span></div>
+          </div>
+          <div className="correlation-latency">
+            <h3>Correlated latency</h3>
+            <strong>{correlation ? `${correlation.p95DurationMilliseconds.toFixed(0)} ms` : '--'}</strong>
+            <span>p95</span>
+            <small>{correlation ? `${correlation.averageDurationMilliseconds.toFixed(0)} ms average` : 'Waiting for seed data'}</small>
+          </div>
+        </div>
+
+        <div className="correlation-card-grid">
+          {data?.correlations.map((item, index) => <article key={item.title}>
+            <div><span>{String(index + 1).padStart(2, '0')}</span><strong>{item.signals}</strong></div>
+            <h3>{item.title}</h3>
+            <dl><div><dt>Join key</dt><dd><code>{item.joinKey}</code></dd></div><div><dt>Provisioning</dt><dd>{item.configuration}</dd></div></dl>
+            <code>{item.query}</code>
+            <p>{item.workflow}</p>
+          </article>)}
+        </div>
+
+        <div className="correlation-recent">
+          <h3>Recent end-to-end correlation samples</h3>
+          <div className="table-wrap compact-table"><table><thead><tr><th>Time</th><th>Correlation ID</th><th>Trace ID</th><th>Root span</th><th>Exemplar span</th><th>Duration</th><th>Status</th></tr></thead><tbody>{correlation?.recentOperations.map(operation => <tr key={operation.correlationId}><td>{new Date(operation.timestamp).toLocaleTimeString()}</td><td><code>{operation.correlationId}</code></td><td><code title={operation.traceId}>{shortId(operation.traceId)}</code></td><td><code title={operation.rootSpanId}>{shortId(operation.rootSpanId)}</code></td><td><code title={operation.metricSpanId}>{shortId(operation.metricSpanId)}</code></td><td>{operation.durationMilliseconds.toFixed(0)} ms</td><td><span className={`pill ${operation.status === 'Completed' ? 'completed' : 'failed'}`}>{operation.status}</span></td></tr>)}</tbody></table></div>
+        </div>
+      </LabSection>
+
       <section className="grafana-recent" aria-labelledby="grafana-recent-heading"><h3 id="grafana-recent-heading">Recent seeded query activity</h3><div className="table-wrap compact-table"><table><thead><tr><th>Time</th><th>Dashboard</th><th>Data source</th><th>Panel</th><th>Duration</th><th>Status</th></tr></thead><tbody>{analytics?.recentActivity.map((activity, index) => <tr key={`${activity.timestamp}-${index}`}><td>{new Date(activity.timestamp).toLocaleTimeString()}</td><td>{activity.dashboard}</td><td>{activity.dataSource}</td><td>{activity.panelType}</td><td>{activity.durationMilliseconds.toFixed(0)} ms</td><td><span className={`pill ${activity.status === 'Success' ? 'completed' : 'failed'}`}>{activity.status}</span></td></tr>)}</tbody></table></div></section>
     </section>
   );
@@ -107,6 +163,15 @@ function LabSection({ id, eyebrow, title, description, children }: { id: string;
 function QueryTimeline({ points }: { points: GrafanaTimelinePoint[] }) {
   const maximum = Math.max(1, ...points.map(point => point.queries));
   return <div className="grafana-timeline" aria-label="Grafana query activity over time">{points.map(point => <div key={point.timestamp} title={`${new Date(point.timestamp).toLocaleTimeString()}: ${point.queries} queries, ${point.errors} errors`}><i style={{ height: `${Math.max(4, point.queries / maximum * 100)}%` }} />{point.errors > 0 && <b style={{ height: `${Math.max(3, point.errors / maximum * 100)}%` }} />}{point.annotations > 0 && <em />}</div>)}{points.length === 0 && <p className="chart-empty">Waiting for seeded queries...</p>}</div>;
+}
+
+function CorrelationTimeline({ points }: { points: CorrelationTimelinePoint[] }) {
+  const maximum = Math.max(1, ...points.map(point => point.operations));
+  return <div className="grafana-timeline" aria-label="Correlated operations over time">{points.map(point => <div key={point.timestamp} title={`${new Date(point.timestamp).toLocaleTimeString()}: ${point.operations} operations, ${point.failures} failures, ${point.exemplars} exemplars`}><i style={{ height: `${Math.max(4, point.operations / maximum * 100)}%` }} />{point.failures > 0 && <b style={{ height: `${Math.max(3, point.failures / maximum * 100)}%` }} />}{point.exemplars > 0 && <em />}</div>)}{points.length === 0 && <p className="chart-empty">Waiting for correlated operations...</p>}</div>;
+}
+
+function shortId(value: string): string {
+  return value.length > 12 ? `${value.slice(0, 8)}…${value.slice(-4)}` : value;
 }
 
 function SignalIcon({ signal }: { signal: string }) {

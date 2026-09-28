@@ -1,0 +1,76 @@
+{
+  "uid": "signal-correlation",
+  "title": "MonitoringDemo - Signal Correlation",
+  "description": "End-to-end learning dashboard for logs, metrics, traces, trace IDs, span IDs, and exemplars.",
+  "tags": ["correlation", "exemplars", "loki", "prometheus", "tempo", "learning"],
+  "refresh": "5s",
+  "time": { "from": "now-1h", "to": "now" },
+  "links": [
+    { "asDropdown": false, "icon": "compass", "includeVars": true, "keepTime": true, "tags": [], "targetBlank": false, "title": "Explore signals", "type": "link", "url": "/explore" }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "logs",
+      "title": "Logs ↔ Traces",
+      "description": "Expand a row and select View trace in Tempo. From the trace, Logs for this span returns to Loki with trace_id and span_id filters.",
+      "gridPos": { "h": 11, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "refId": "A", "queryType": "range", "expr": "{service_name=\"MonitoringDemo.ApiService\"} | event_name =~ `correlation_.*`" }
+      ],
+      "options": { "showTime": true, "showLabels": false, "showCommonLabels": false, "wrapLogMessage": true, "enableLogDetails": true, "sortOrder": "Descending", "dedupStrategy": "none" }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Metrics ↔ Traces",
+      "description": "The operation rate is recorded inside sampled spans. Use Tempo's Metrics for this span link for the reverse trace-to-metrics pivot.",
+      "gridPos": { "h": 11, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum by (outcome) (rate(correlation_demo_operations_total[$__rate_interval]))", "legendFormat": "{{outcome}}", "exemplar": true }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ops", "custom": { "drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 16, "lineWidth": 2 } }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "logs",
+      "title": "Trace ID correlation",
+      "description": "trace_id is the shared 128-bit identity that groups all log events and spans in one operation.",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 11 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "refId": "A", "queryType": "range", "expr": "{service_name=\"MonitoringDemo.ApiService\"} | trace_id != `` | correlation_id =~ `correlation-.*`" }
+      ],
+      "options": { "showTime": true, "showLabels": false, "wrapLogMessage": true, "enableLogDetails": true, "sortOrder": "Descending", "dedupStrategy": "none" }
+    },
+    {
+      "id": 4,
+      "type": "logs",
+      "title": "Span ID correlation",
+      "description": "span_id narrows a trace to the exact operation. Tempo's trace-to-logs link is provisioned with filterBySpanID enabled.",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 11 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "refId": "A", "queryType": "range", "expr": "{service_name=\"MonitoringDemo.ApiService\"} | span_id != `` | correlation_id =~ `correlation-.*`" }
+      ],
+      "options": { "showTime": true, "showLabels": false, "wrapLogMessage": true, "enableLogDetails": true, "sortOrder": "Descending", "dedupStrategy": "none" }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Fundamental Exemplars",
+      "description": "Diamond markers are exemplar measurements carrying trace_id and span_id. Click one to open its real Tempo trace.",
+      "gridPos": { "h": 11, "w": 24, "x": 0, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "correlation_demo_duration_ms_bucket{le=\"+Inf\"}", "legendFormat": "{{outcome}} · {{region}}", "exemplar": true }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineInterpolation": "stepAfter", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull"] }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    }
+  ],
+  "schemaVersion": 41,
+  "version": 1
+}

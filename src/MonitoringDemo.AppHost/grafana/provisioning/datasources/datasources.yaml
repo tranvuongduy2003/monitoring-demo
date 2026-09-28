@@ -9,6 +9,9 @@ datasources:
     jsonData:
       httpMethod: POST
       timeInterval: 5s
+      exemplarTraceIdDestinations:
+        - datasourceUid: tempo
+          name: trace_id
     editable: false
   - name: Loki
     uid: loki
@@ -19,9 +22,11 @@ datasources:
       maxLines: 1000
       derivedFields:
         - name: TraceID
-          matcherRegex: 'trace[_\.]id[=\": ]+([a-f0-9]{32})'
+          matcherType: label
+          matcherRegex: 'trace[_]?id'
           datasourceUid: tempo
           url: '$${__value.raw}'
+          urlDisplayLabel: 'View trace in Tempo'
     editable: false
   - name: Tempo
     uid: tempo
@@ -48,7 +53,11 @@ datasources:
         tags:
           - key: service.name
             value: service_name
+          - key: operation
+          - key: outcome
         queries:
           - name: Request rate
             query: 'sum(rate(http_server_request_duration_seconds_count{service_name="$${__span.tags[\"service.name\"]}"}[$${__rate_interval}]))'
+          - name: Correlated operation latency
+            query: 'histogram_quantile(0.95, sum by (le) (rate(correlation_demo_duration_ms_bucket{$${__tags}}[$${__rate_interval}])))'
     editable: false

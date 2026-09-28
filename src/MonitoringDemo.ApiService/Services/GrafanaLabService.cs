@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using MonitoringDemo.ApiService.Observability;
 using MonitoringDemo.ApiService.Telemetry;
 
 namespace MonitoringDemo.ApiService.Services;
@@ -9,29 +10,42 @@ public sealed class GrafanaLabService
 {
     private const int MaximumSamples = 8_000;
     private static readonly string[] DataSourceNames = ["Prometheus", "Loki", "Tempo"];
-    private static readonly string[] DashboardNames = ["Grafana Fundamentals", "API Metrics", "Logs & Correlation"];
+    private static readonly string[] DashboardNames = ["Grafana Fundamentals", "API Metrics", "Logs & Correlation", "Signal Correlation"];
     private static readonly string[] PanelTypes = ["Time series", "Stat", "Logs", "Table", "Heatmap", "Gauge"];
 
     private readonly MetricsDemoSeeder _metricsSeeder;
     private readonly TracingDemoSeeder _tracingSeeder;
+    private readonly AppMetrics _appMetrics;
+    private readonly AppActivitySource _activitySource;
     private readonly ILogger<GrafanaLabService> _logger;
     private readonly Counter<long> _dashboardViews;
     private readonly Counter<long> _queryRuns;
     private readonly Counter<long> _queryErrors;
     private readonly Histogram<double> _queryDuration;
+    private readonly Counter<long> _correlationOperations;
+    private readonly Counter<long> _correlationFailures;
+    private readonly Histogram<double> _correlationDuration;
     private readonly ConcurrentQueue<GrafanaSample> _samples = new();
+    private readonly ConcurrentQueue<CorrelationSample> _correlationSamples = new();
     private int _sampleCount;
+    private int _correlationSampleCount;
     private int _seedRun;
+    private int _correlationSeedRun;
+    private int _correlationSequence;
     private int _activeAlerts;
 
     public GrafanaLabService(
         MetricsDemoSeeder metricsSeeder,
         TracingDemoSeeder tracingSeeder,
+        AppMetrics appMetrics,
+        AppActivitySource activitySource,
         IMeterFactory meterFactory,
         ILogger<GrafanaLabService> logger)
     {
         _metricsSeeder = metricsSeeder;
         _tracingSeeder = tracingSeeder;
+        _appMetrics = appMetrics;
+        _activitySource = activitySource;
         _logger = logger;
 
         var meter = meterFactory.Create(TelemetryConstants.MeterName);
@@ -41,6 +55,11 @@ public sealed class GrafanaLabService
         // The instrument name already carries the unit suffix; omitting unit keeps the
         // Prometheus name stable as grafana_demo_query_duration_ms_bucket.
         _queryDuration = meter.CreateHistogram<double>("grafana_demo_query_duration_ms");
+        _correlationOperations = meter.CreateCounter<long>("correlation_demo_operations_total", unit: "{operation}");
+        _correlationFailures = meter.CreateCounter<long>("correlation_demo_failures_total", unit: "{operation}");
+        _correlationDuration = meter.CreateHistogram<double>(
+            "correlation_demo_duration_ms",
+            description: "Duration of operations carrying correlated logs, metrics, and traces");
         meter.CreateObservableGauge("grafana_demo_active_alerts", () => Volatile.Read(ref _activeAlerts), unit: "{alert}");
     }
 
@@ -86,11 +105,24 @@ public sealed class GrafanaLabService
         // Populate the actual backends as well as the deterministic teaching model.
         _metricsSeeder.Seed(Math.Min(count, 240), writeLog: false);
         var traces = _tracingSeeder.Seed(Math.Clamp(count / 12, 3, 24));
+        var correlations = SeedCorrelationsCore(Math.Clamp(count / 15, 3, 24), run);
         _logger.LogInformation(
-            "Seeded {GrafanaInteractionCount} Grafana interactions and {TraceCount} correlated traces for run {SeedRun}",
-            count, traces.TraceIds.Count, run);
+            "Seeded {GrafanaInteractionCount} Grafana interactions, {TraceCount} teaching traces, and {CorrelationCount} correlated operations for run {SeedRun}",
+            count, traces.TraceIds.Count, correlations.Seeded, run);
 
-        return new GrafanaSeedResult(count, run, traces.TraceIds.Count, GetAnalytics(60));
+        return new GrafanaSeedResult(
+            count,
+            run,
+            traces.TraceIds.Count + correlations.Seeded,
+            correlations.Seeded,
+            GetAnalytics(60),
+            correlations.Analytics);
+    }
+
+    public GrafanaCorrelationSeedResult SeedCorrelations(int requestedCount)
+    {
+        int run = Interlocked.Increment(ref _correlationSeedRun);
+        return SeedCorrelationsCore(requestedCount, run);
     }
 
     public GrafanaOverview GetOverview(int requestedWindowMinutes)
@@ -107,7 +139,189 @@ public sealed class GrafanaLabService
             Variables,
             ExploreExamples,
             Annotations,
-            AlertRules);
+            AlertRules,
+            Correlations,
+            GetCorrelationAnalytics(windowMinutes));
+    }
+
+    private GrafanaCorrelationSeedResult SeedCorrelationsCore(int requestedCount, int run)
+    {
+        int count = Math.Clamp(requestedCount, 1, 100);
+        var random = new Random(20260929 + run);
+
+        for (int index = 0; index < count; index++)
+        {
+            int sequence = Interlocked.Increment(ref _correlationSequence);
+            string correlationId = $"correlation-{run:000}-{sequence:00000}";
+            string region = sequence % 2 == 0 ? "ap-southeast" : "eu-west";
+            string status = sequence % 7 == 0 ? "Failed" : "Completed";
+            bool failed = status == "Failed";
+            double duration = failed ? random.Next(900, 1_550) : random.Next(90, 780);
+            var timestamp = DateTimeOffset.UtcNow;
+            var previousActivity = Activity.Current;
+
+            try
+            {
+                Activity.Current = null;
+                using var root = _activitySource.Source.StartActivity("CorrelatedCheckout", ActivityKind.Server);
+                if (root is null) continue;
+
+                root.SetTag("demo.correlation", true);
+                root.SetTag("correlation.id", correlationId);
+                root.SetTag("region", region);
+                root.SetTag("order.status", status);
+                root.SetTag("operation", "checkout");
+                root.SetTag("outcome", status.ToLowerInvariant());
+                root.SetTag("service.name", TelemetryConstants.ServiceName);
+                root.AddEvent(new ActivityEvent("correlation.started"));
+
+                using (var scope = BeginCorrelationScope(
+                    "correlation_started",
+                    correlationId,
+                    root.TraceId.ToString(),
+                    root.SpanId.ToString(),
+                    region))
+                {
+                    _logger.LogInformation(
+                        "Correlation demo operation {CorrelationId} started in {Region}",
+                        correlationId,
+                        region);
+                }
+
+                string metricSpanId;
+                using (var child = _activitySource.Source.StartActivity("CorrelatedPayment", ActivityKind.Client))
+                {
+                    metricSpanId = child?.SpanId.ToString() ?? root.SpanId.ToString();
+                    child?.SetTag("demo.correlation", true);
+                    child?.SetTag("correlation.id", correlationId);
+                    child?.SetTag("payment.outcome", failed ? "declined" : "authorized");
+                    child?.SetTag("operation", "checkout");
+                    child?.SetTag("outcome", status.ToLowerInvariant());
+                    child?.SetStatus(failed ? ActivityStatusCode.Error : ActivityStatusCode.Ok);
+
+                    var tags = new TagList
+                    {
+                        { "service.name", TelemetryConstants.ServiceName },
+                        { "operation", "checkout" },
+                        { "outcome", status.ToLowerInvariant() },
+                        { "region", region }
+                    };
+                    _correlationOperations.Add(1, tags);
+                    _correlationDuration.Record(duration, tags);
+                    if (failed) _correlationFailures.Add(1, tags);
+
+                    using var scope = BeginCorrelationScope(
+                        failed ? "correlation_failed" : "correlation_completed",
+                        correlationId,
+                        root.TraceId.ToString(),
+                        metricSpanId,
+                        region);
+                    if (failed)
+                    {
+                        _logger.LogWarning(
+                            "Correlation demo operation {CorrelationId} failed after {DurationMilliseconds} ms",
+                            correlationId,
+                            duration);
+                    }
+                    else
+                    {
+                        _logger.LogInformation(
+                            "Correlation demo operation {CorrelationId} completed after {DurationMilliseconds} ms",
+                            correlationId,
+                            duration);
+                    }
+                }
+
+                // This histogram is also recorded under the root span, demonstrating that
+                // regular application instruments gain exemplars without a separate API.
+                _appMetrics.RecordOrderProcessed(duration, status, "Correlation", "correlation-seed");
+                root.SetStatus(failed ? ActivityStatusCode.Error : ActivityStatusCode.Ok);
+                root.AddEvent(new ActivityEvent(failed ? "correlation.failed" : "correlation.completed"));
+
+                AddCorrelationSample(new CorrelationSample(
+                    timestamp,
+                    correlationId,
+                    root.TraceId.ToString(),
+                    root.SpanId.ToString(),
+                    metricSpanId,
+                    duration,
+                    failed));
+            }
+            finally
+            {
+                Activity.Current = previousActivity;
+            }
+        }
+
+        var analytics = GetCorrelationAnalytics(60);
+        return new GrafanaCorrelationSeedResult(count, run, analytics);
+    }
+
+    private IDisposable? BeginCorrelationScope(
+        string eventName,
+        string correlationId,
+        string traceId,
+        string spanId,
+        string region) =>
+        _logger.BeginApplicationScope(new ApplicationLogScope
+        {
+            EventName = eventName,
+            CorrelationId = correlationId,
+            RequestId = $"seed-{correlationId}",
+            TraceId = traceId,
+            SpanId = spanId,
+            Region = region,
+            TenantId = "correlation-lab",
+            SeedData = true
+        });
+
+    private CorrelationAnalytics GetCorrelationAnalytics(int windowMinutes)
+    {
+        var cutoff = DateTimeOffset.UtcNow.AddMinutes(-windowMinutes);
+        var samples = _correlationSamples
+            .Where(sample => sample.Timestamp >= cutoff)
+            .OrderBy(sample => sample.Timestamp)
+            .ToArray();
+        var durations = samples.Select(sample => sample.DurationMilliseconds).Order().ToArray();
+        var timeline = samples
+            .GroupBy(sample => new DateTimeOffset(
+                sample.Timestamp.Year,
+                sample.Timestamp.Month,
+                sample.Timestamp.Day,
+                sample.Timestamp.Hour,
+                sample.Timestamp.Minute,
+                0,
+                TimeSpan.Zero))
+            .Select(group => new CorrelationTimelinePoint(
+                group.Key,
+                group.Count(),
+                group.Count(item => item.Failed),
+                group.Count()))
+            .ToArray();
+        var recent = samples
+            .OrderByDescending(sample => sample.Timestamp)
+            .Take(12)
+            .Select(sample => new CorrelationRecentOperation(
+                sample.Timestamp,
+                sample.CorrelationId,
+                sample.TraceId,
+                sample.RootSpanId,
+                sample.MetricSpanId,
+                Math.Round(sample.DurationMilliseconds, 1),
+                sample.Failed ? "Failed" : "Completed"))
+            .ToArray();
+
+        return new CorrelationAnalytics(
+            samples.Length,
+            samples.Length * 2,
+            samples.Length * 2,
+            samples.Length,
+            samples.Select(sample => sample.TraceId).Distinct(StringComparer.Ordinal).Count(),
+            samples.SelectMany(sample => new[] { sample.RootSpanId, sample.MetricSpanId }).Distinct(StringComparer.Ordinal).Count(),
+            samples.Length == 0 ? 0 : Math.Round(samples.Average(sample => sample.DurationMilliseconds), 1),
+            Percentile(durations, 0.95),
+            timeline,
+            recent);
     }
 
     private GrafanaAnalytics GetAnalytics(int windowMinutes)
@@ -152,6 +366,14 @@ public sealed class GrafanaLabService
             count = Interlocked.Decrement(ref _sampleCount);
     }
 
+    private void AddCorrelationSample(CorrelationSample sample)
+    {
+        _correlationSamples.Enqueue(sample);
+        int count = Interlocked.Increment(ref _correlationSampleCount);
+        while (count > MaximumSamples && _correlationSamples.TryDequeue(out _))
+            count = Interlocked.Decrement(ref _correlationSampleCount);
+    }
+
     private static double Percentile(double[] values, double percentile)
     {
         if (values.Length == 0) return 0;
@@ -170,7 +392,8 @@ public sealed class GrafanaLabService
     [
         new("grafana-fundamentals", "Grafana Fundamentals", "Provisioned", 8, "Variables, mixed signals, annotations, and alert health"),
         new("monitoring-demo", "API Metrics", "Provisioned", 12, "Application and runtime Prometheus analytics"),
-        new("monitoring-demo-logs", "Logs & Correlation", "Provisioned", 5, "Loki volume, errors, slow operations, and raw logs")
+        new("monitoring-demo-logs", "Logs & Correlation", "Provisioned", 5, "Loki volume, errors, slow operations, and raw logs"),
+        new("signal-correlation", "Signal Correlation", "Provisioned", 5, "Bidirectional logs, metrics, traces, IDs, and exemplars")
     ];
 
     private static readonly IReadOnlyList<GrafanaPanelDefinition> Panels =
@@ -217,6 +440,15 @@ public sealed class GrafanaLabService
         new("grafana-demo-query-errors", "Grafana demo query errors", "MonitoringDemo", "Prometheus", "sum(increase(grafana_demo_query_errors_total[5m]))", "Above 2", "1m", "NoData", "Normal", "Provisioned"),
         new("high-order-error-rate", "High order error rate", "Prometheus rules", "Prometheus", "job:orders_failed:ratio5m > 0.2", "Above 20%", "2m", "NoData", "Normal", "Data source managed")
     ];
+
+    private static readonly IReadOnlyList<GrafanaCorrelationDefinition> Correlations =
+    [
+        new("Logs ↔ Traces", "Loki ↔ Tempo", "trace_id", "Loki derived field + Tempo tracesToLogsV2", "{service_name=\"MonitoringDemo.ApiService\"} | trace_id = `<trace-id>`", "Open a log's View trace link, then use Logs for this span to return to the exact log window."),
+        new("Metrics ↔ Traces", "Prometheus ↔ Tempo", "operation + outcome", "Tempo tracesToMetrics + Prometheus exemplar destination", "histogram_quantile(0.95, sum by (le) (rate(correlation_demo_duration_ms_bucket[$__rate_interval])))", "Open Metrics for this span from Tempo; click an exemplar diamond in the metric graph to return to Tempo."),
+        new("Trace ID correlation", "All signals", "trace_id", "W3C 128-bit trace identity", "{service_name=\"MonitoringDemo.ApiService\"} | trace_id = `<trace-id>`", "Use one trace ID to group every correlated log and span across the operation."),
+        new("Span ID correlation", "Logs ↔ exact span", "span_id", "Tempo filterBySpanID", "{service_name=\"MonitoringDemo.ApiService\"} | trace_id = `<trace-id>` | span_id = `<span-id>`", "Filter a trace's logs to the selected 64-bit span instead of every log in the trace."),
+        new("Fundamental Exemplars", "Metric sample → trace", "trace_id + span_id", "TraceBased exemplar filter + Prometheus exemplar storage", "correlation_demo_duration_ms_bucket", "Measurements recorded under an active sampled span carry an exemplar; Grafana renders it as a clickable diamond.")
+    ];
 }
 
 public sealed class GrafanaSeedService : BackgroundService
@@ -237,8 +469,9 @@ public sealed class GrafanaSeedService : BackgroundService
     }
 }
 
-public sealed record GrafanaOverview(DateTimeOffset GeneratedAt, int WindowMinutes, GrafanaAnalytics Analytics, IReadOnlyList<GrafanaDataSource> DataSources, IReadOnlyList<GrafanaDashboardDefinition> Dashboards, IReadOnlyList<GrafanaPanelDefinition> Panels, IReadOnlyList<GrafanaQueryDefinition> Queries, IReadOnlyList<GrafanaVariableDefinition> Variables, IReadOnlyList<GrafanaExploreExample> Explore, IReadOnlyList<GrafanaAnnotationDefinition> Annotations, IReadOnlyList<GrafanaAlertRuleDefinition> Alerting);
-public sealed record GrafanaSeedResult(int Seeded, int Run, int TraceCount, GrafanaAnalytics Analytics);
+public sealed record GrafanaOverview(DateTimeOffset GeneratedAt, int WindowMinutes, GrafanaAnalytics Analytics, IReadOnlyList<GrafanaDataSource> DataSources, IReadOnlyList<GrafanaDashboardDefinition> Dashboards, IReadOnlyList<GrafanaPanelDefinition> Panels, IReadOnlyList<GrafanaQueryDefinition> Queries, IReadOnlyList<GrafanaVariableDefinition> Variables, IReadOnlyList<GrafanaExploreExample> Explore, IReadOnlyList<GrafanaAnnotationDefinition> Annotations, IReadOnlyList<GrafanaAlertRuleDefinition> Alerting, IReadOnlyList<GrafanaCorrelationDefinition> Correlations, CorrelationAnalytics CorrelationAnalytics);
+public sealed record GrafanaSeedResult(int Seeded, int Run, int TraceCount, int CorrelationCount, GrafanaAnalytics Analytics, CorrelationAnalytics CorrelationAnalytics);
+public sealed record GrafanaCorrelationSeedResult(int Seeded, int Run, CorrelationAnalytics Analytics);
 public sealed record GrafanaAnalytics(int QueryCount, int DashboardViewCount, int ErrorCount, int AnnotationCount, double AverageQueryDurationMilliseconds, double P95QueryDurationMilliseconds, int ActiveAlerts, IReadOnlyList<GrafanaTimelinePoint> Timeline, IReadOnlyList<GrafanaDataSourceUsage> DataSourceUsage, IReadOnlyList<GrafanaPanelUsage> PanelUsage, IReadOnlyList<GrafanaRecentActivity> RecentActivity);
 public sealed record GrafanaTimelinePoint(DateTimeOffset Timestamp, int Queries, int Errors, int Annotations);
 public sealed record GrafanaDataSourceUsage(string Name, int QueryCount, int ErrorCount, double AverageDurationMilliseconds);
@@ -252,4 +485,9 @@ public sealed record GrafanaVariableDefinition(string Name, string Type, string 
 public sealed record GrafanaExploreExample(string Signal, string DataSource, string Query, string Workflow);
 public sealed record GrafanaAnnotationDefinition(string Name, string Source, string Query, string Tags, bool Enabled);
 public sealed record GrafanaAlertRuleDefinition(string Uid, string Title, string Group, string DataSource, string Query, string Condition, string For, string NoDataState, string State, string Source);
+public sealed record GrafanaCorrelationDefinition(string Title, string Signals, string JoinKey, string Configuration, string Query, string Workflow);
+public sealed record CorrelationAnalytics(int OperationCount, int LogCount, int MetricPointCount, int ExemplarCount, int UniqueTraceIds, int UniqueSpanIds, double AverageDurationMilliseconds, double P95DurationMilliseconds, IReadOnlyList<CorrelationTimelinePoint> Timeline, IReadOnlyList<CorrelationRecentOperation> RecentOperations);
+public sealed record CorrelationTimelinePoint(DateTimeOffset Timestamp, int Operations, int Failures, int Exemplars);
+public sealed record CorrelationRecentOperation(DateTimeOffset Timestamp, string CorrelationId, string TraceId, string RootSpanId, string MetricSpanId, double DurationMilliseconds, string Status);
 internal sealed record GrafanaSample(DateTimeOffset Timestamp, string DataSource, string Dashboard, string PanelType, double DurationMilliseconds, bool Failed, bool Annotated);
+internal sealed record CorrelationSample(DateTimeOffset Timestamp, string CorrelationId, string TraceId, string RootSpanId, string MetricSpanId, double DurationMilliseconds, bool Failed);

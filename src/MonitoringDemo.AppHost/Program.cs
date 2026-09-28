@@ -43,6 +43,7 @@ var defaultApiUrl = $"http://localhost:{apiPort}";
 var defaultGrafanaUrl = $"http://localhost:{grafanaPort}";
 var defaultPrometheusUrl = $"http://localhost:{prometheusPort}";
 var prometheusRetentionArgument = $"--storage.tsdb.retention.time={Get("PROMETHEUS_RETENTION_TIME", "15d")}";
+var prometheusFeatureArgument = $"--enable-feature={Get("PROMETHEUS_FEATURES", "exemplar-storage")}";
 
 var loki = builder.AddContainer("loki", "grafana/loki", Get("LOKI_IMAGE_TAG", "3.6.3"))
     .WithBindMount("loki", "/etc/loki", isReadOnly: true)
@@ -90,7 +91,7 @@ var prometheus = builder.AddContainer("prometheus", "prom/prometheus", Get("PROM
         "/etc/prometheus/prometheus.yml > /tmp/prometheus.yml && " +
         "sed -e \"s|__API_METRICS_TARGET__|${API_METRICS_TARGET}|g\" " +
         "/etc/prometheus/targets/apiservice.json > /tmp/apiservice-targets.json && " +
-        $"exec /bin/prometheus --config.file=/tmp/prometheus.yml {prometheusRetentionArgument}")
+        $"exec /bin/prometheus --config.file=/tmp/prometheus.yml {prometheusRetentionArgument} {prometheusFeatureArgument}")
     .WaitFor(collector);
 
 var grafana = builder.AddContainer("grafana", "grafana/grafana", Get("GRAFANA_IMAGE_TAG", "latest"))

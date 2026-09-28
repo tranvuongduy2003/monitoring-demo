@@ -13,5 +13,8 @@ public static class GrafanaEndpoints
 
         group.MapPost("/seed", (int? count, GrafanaLabService lab) =>
             Results.Ok(lab.Seed(count ?? 180)));
+
+        group.MapPost("/correlation/seed", (int? count, GrafanaLabService lab) =>
+            Results.Ok(lab.SeedCorrelations(count ?? 24)));
     }
 }

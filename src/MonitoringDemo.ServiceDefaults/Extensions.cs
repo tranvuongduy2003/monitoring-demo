@@ -110,7 +110,8 @@ public static class Extensions
                 ]))
             .WithMetrics(metrics =>
             {
-                metrics.AddAspNetCoreInstrumentation()
+                metrics.SetExemplarFilter(ExemplarFilterType.TraceBased)
+                    .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddRuntimeInstrumentation()
                     .AddMeter(serviceName)

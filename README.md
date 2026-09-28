@@ -67,13 +67,15 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 - Repeatable OTLP batch seeding with protocol and signal breakdowns, payload compression, retry/failure counts, latency percentiles, and recent export visualization
 - Production-shaped OpenTelemetry Collector topology with OTLP receivers, memory limiting, batching, per-signal pipelines, Tempo/Loki exporters, and a Prometheus scrape endpoint
 - Repeatable Collector pipeline seeding with receiver throughput, signal routing, batch triggers, memory pressure, retry/drop counts, and latency analytics
-- Correlation, request, trace, and span IDs across application logs
+- Bidirectional logs ↔ traces and metrics ↔ traces correlation in Grafana, with trace-ID and span-ID filtering
+- Trace-based OpenTelemetry exemplars stored by Prometheus and linked to real Tempo traces
+- Repeatable correlation seeding with per-minute operations, logs, metric points, exemplars, latency, failures, and recent ID analytics
 - Prometheus metric scraping and Loki OTLP log storage
 - Live Prometheus architecture lab covering pull collection, scrape intervals, targets, jobs, instances, exporters, service discovery, TSDB retention, and rules
 - Live Fundamental PromQL lab covering metric selection, label filtering, instant and range vectors, `sum`, `avg`, `min`, `max`, `count`, `rate`, `increase`, `by`, `without`, and `histogram_quantile`
 - Live distributed tracing lab covering traces, trace/span IDs, roots, parent-child relationships, durations, attributes, events, statuses, waterfalls, and TraceQL
 - Live context propagation lab covering distributed context, W3C Trace Context, `traceparent`, `tracestate`, HTTP headers, gRPC metadata, and fundamental baggage
-- Dedicated Grafana lab covering data sources, dashboards, panels, PromQL/LogQL/TraceQL queries, variables, Explore, annotations, and fundamental alerting
+- Dedicated Grafana lab covering data sources, dashboards, panels, PromQL/LogQL/TraceQL queries, variables, Explore, annotations, fundamental alerting, and five correlation labs
 - Provisioned Grafana data sources, cross-signal correlations, dashboards, template variables, Loki annotations, and a Grafana-managed alert rule
 - Repeatable Grafana interaction seeding with query volume, errors, dashboard views, data-source latency, panel usage, annotations, and recent-activity analytics
 - Background order simulation, repeatable metric/trace seed endpoints, startup trace scenarios, and continuous bounded metric seeding so every visualization has test data

@@ -10,6 +10,8 @@ export interface GrafanaOverview {
   explore: GrafanaExploreExample[];
   annotations: GrafanaAnnotationDefinition[];
   alerting: GrafanaAlertRuleDefinition[];
+  correlations: GrafanaCorrelationDefinition[];
+  correlationAnalytics: CorrelationAnalytics;
 }
 
 export interface GrafanaAnalytics {
@@ -38,4 +40,20 @@ export interface GrafanaVariableDefinition { name: string; type: string; definit
 export interface GrafanaExploreExample { signal: string; dataSource: string; query: string; workflow: string }
 export interface GrafanaAnnotationDefinition { name: string; source: string; query: string; tags: string; enabled: boolean }
 export interface GrafanaAlertRuleDefinition { uid: string; title: string; group: string; dataSource: string; query: string; condition: string; for: string; noDataState: string; state: string; source: string }
-export interface GrafanaSeedResult { seeded: number; run: number; traceCount: number; analytics: GrafanaAnalytics }
+export interface GrafanaCorrelationDefinition { title: string; signals: string; joinKey: string; configuration: string; query: string; workflow: string }
+export interface CorrelationAnalytics {
+  operationCount: number;
+  logCount: number;
+  metricPointCount: number;
+  exemplarCount: number;
+  uniqueTraceIds: number;
+  uniqueSpanIds: number;
+  averageDurationMilliseconds: number;
+  p95DurationMilliseconds: number;
+  timeline: CorrelationTimelinePoint[];
+  recentOperations: CorrelationRecentOperation[];
+}
+export interface CorrelationTimelinePoint { timestamp: string; operations: number; failures: number; exemplars: number }
+export interface CorrelationRecentOperation { timestamp: string; correlationId: string; traceId: string; rootSpanId: string; metricSpanId: string; durationMilliseconds: number; status: string }
+export interface GrafanaSeedResult { seeded: number; run: number; traceCount: number; correlationCount: number; analytics: GrafanaAnalytics; correlationAnalytics: CorrelationAnalytics }
+export interface GrafanaCorrelationSeedResult { seeded: number; run: number; analytics: CorrelationAnalytics }

@@ -1,5 +1,5 @@
 import type { useGrafanaDashboard } from '@/domains/grafana/hooks/useGrafanaDashboard';
-import type { CorrelationTimelinePoint, GrafanaAnalytics, GrafanaTimelinePoint } from '@/domains/grafana/types';
+import type { AlertingTimelinePoint, CorrelationTimelinePoint, GrafanaAnalytics, GrafanaTimelinePoint } from '@/domains/grafana/types';
 import { SectionHeading } from '@/shared/components/SectionHeading';
 
 type GrafanaDashboardModel = ReturnType<typeof useGrafanaDashboard>;
@@ -8,9 +8,10 @@ const grafanaUrl = (import.meta.env.VITE_GRAFANA_URL ?? 'http://localhost:3000')
 const sections = ['data-sources', 'dashboards', 'panels', 'queries', 'variables', 'explore', 'annotations', 'alerting', 'correlation'] as const;
 
 export function GrafanaDashboard({ model }: { model: GrafanaDashboardModel }) {
-  const { overview, seeding, seedResult, correlationSeeding, correlationSeedResult, error, seedGrafana, seedCorrelations } = model;
+  const { overview, seeding, seedResult, correlationSeeding, correlationSeedResult, alertingSeeding, alertingSeedResult, error, seedGrafana, seedCorrelations, seedAlerting } = model;
   const data = overview.data;
   const analytics = data?.analytics;
+  const alerting = data?.alertingAnalytics;
   const correlation = data?.correlationAnalytics;
 
   return (
@@ -26,6 +27,7 @@ export function GrafanaDashboard({ model }: { model: GrafanaDashboardModel }) {
       {(overview.error || error) && <p className="error panel-notice" role="alert">{error || 'Grafana analytics could not be loaded. Automatic retry is active.'}</p>}
       {seedResult && <p className="notice panel-notice" role="status">Run {seedResult.run} added {seedResult.seeded} queries, {seedResult.traceCount} traces, and {seedResult.correlationCount} fully correlated operations.</p>}
       {correlationSeedResult && <p className="notice panel-notice" role="status">Correlation run {correlationSeedResult.run} emitted {correlationSeedResult.seeded} operations across logs, metrics, traces, and exemplars.</p>}
+      {alertingSeedResult && <p className="notice panel-notice" role="status">Alerting run {alertingSeedResult.run} added {alertingSeedResult.seededEvaluations} evaluations for the {alertingSeedResult.scenario} scenario.</p>}
 
       <div className="grafana-summary" aria-label="Grafana analytics summary">
         <Summary label="Queries" value={analytics?.queryCount.toLocaleString() ?? '--'} detail="last 60 minutes" />
@@ -92,9 +94,55 @@ export function GrafanaDashboard({ model }: { model: GrafanaDashboardModel }) {
         <div className="grafana-annotation-layout"><div className="grafana-annotation-track"><span>60m ago</span><div>{analytics?.timeline.filter(point => point.annotations > 0).map(point => <i key={point.timestamp} title={`${new Date(point.timestamp).toLocaleTimeString()}: ${point.annotations} annotations`} />)}</div><span>now</span></div><div>{data?.annotations.map(annotation => <article key={annotation.name}><div><strong>{annotation.name}</strong><span className={`pill ${annotation.enabled ? 'completed' : 'pending'}`}>{annotation.enabled ? 'Enabled' : 'Example'}</span></div><p>{annotation.source} · {annotation.tags}</p><code>{annotation.query}</code></article>)}</div></div>
       </LabSection>
 
-      <LabSection id="grafana-alerting" eyebrow="08 · Fundamental Grafana Alerting" title="Evaluate, route, and manage alert state" description="A Grafana-managed rule is provisioned with the stack. The lifecycle is Normal → Pending → Alerting, with explicit No Data and Error behavior.">
-        <div className="grafana-alert-flow" aria-label="Grafana alerting flow"><Flow label="Query" detail="Prometheus range" /><b>→</b><Flow label="Reduce" detail="Last value" /><b>→</b><Flow label="Threshold" detail="Above 2" /><b>→</b><Flow label="State" detail="Pending / Alerting" /><b>→</b><Flow label="Route" detail="Contact point" /></div>
-        <div className="grafana-alert-grid">{data?.alerting.map(alert => <article key={alert.uid}><div><span className={`grafana-alert-state ${alert.state.toLowerCase()}`}>{alert.state}</span><small>{alert.source}</small></div><h3>{alert.title}</h3><code>{alert.query}</code><dl><div><dt>Condition</dt><dd>{alert.condition}</dd></div><div><dt>For</dt><dd>{alert.for}</dd></div><div><dt>No data</dt><dd>{alert.noDataState}</dd></div></dl></article>)}</div>
+      <LabSection id="grafana-alerting" eyebrow="08 · Fundamental Alerting" title="Evaluate, route, and manage alert state" description="Seed real threshold signals, watch rules move through Pending and Firing, inspect routed notifications, and measure alert fatigue.">
+        <div className="alerting-actions" aria-label="Alerting test scenarios">
+          <div><strong>Test the complete lifecycle</strong><span>Each scenario adds 90 deterministic evaluations and updates Prometheus gauges.</span></div>
+          <div>{['healthy', 'pending', 'firing', 'alert-fatigue'].map(scenario => <button type="button" key={scenario} onClick={() => void seedAlerting(scenario)} disabled={Boolean(alertingSeeding)}>{alertingSeeding === scenario ? 'Seeding…' : scenario.replace('-', ' ')}</button>)}</div>
+          <a href={`${grafanaUrl}/d/fundamental-alerting`} target="_blank" rel="noreferrer">Open alert dashboard ↗</a>
+        </div>
+
+        <div className="alerting-summary" aria-label="Fundamental alerting analytics">
+          <Summary label="Evaluations" value={alerting?.evaluationCount.toLocaleString() ?? '--'} detail="last 60 minutes" />
+          <Summary label="Breaches" value={alerting?.thresholdBreaches ?? '--'} detail="values above threshold" tone="warning" />
+          <Summary label="Pending" value={alerting?.pendingRules ?? '--'} detail="waiting for duration" tone={alerting?.pendingRules ? 'warning' : 'success'} />
+          <Summary label="Firing" value={alerting?.firingRules ?? '--'} detail="active incidents" tone={alerting?.firingRules ? 'error' : 'success'} />
+          <Summary label="Delivered" value={alerting?.deliveredNotifications ?? '--'} detail="routed notifications" />
+          <Summary label="Noise ratio" value={alerting ? `${alerting.noiseRatioPercent.toFixed(1)}%` : '--'} detail={`${alerting?.suppressedNotifications ?? 0} suppressed`} tone={alerting && alerting.noiseRatioPercent > 35 ? 'error' : 'success'} />
+        </div>
+
+        <div className="grafana-alert-flow" aria-label="Grafana alerting flow"><Flow label="Query" detail="Prometheus signal" /><b>→</b><Flow label="Threshold" detail="Compare value" /><b>→</b><Flow label="Pending" detail="Sustain for duration" /><b>→</b><Flow label="Firing" detail="Open incident" /><b>→</b><Flow label="Notify" detail="Policy + channel" /></div>
+
+        <AlertTopic title="Threshold alerts" description="A threshold turns an observed value into a breach decision. The threshold, unit, and current value stay visible so the decision is explainable.">
+          <div className="alert-threshold-grid">{alerting?.rules.map(rule => { const percent = Math.min(100, rule.currentValue / rule.threshold * 70); return <article key={rule.uid}><div><strong>{rule.title}</strong><span>{rule.currentValue.toFixed(1)} {rule.unit}</span></div><div className="alert-threshold-track"><i style={{ width: `${percent}%` }} /><b style={{ left: '70%' }} /></div><small>Threshold: {rule.threshold.toLocaleString()} {rule.unit} · {rule.breaches} breaches</small></article>; })}</div>
+        </AlertTopic>
+
+        <AlertTopic title="Alert rules" description="Rules bind a query, condition, pending duration, labels, and explicit No Data/Error behavior into one repeatable evaluation.">
+          <div className="grafana-alert-grid">{data?.alerting.map(alert => <article key={alert.uid}><div><span className={`grafana-alert-state ${alert.state.toLowerCase()}`}>{alert.state}</span><small>{alert.severity} · {alert.source}</small></div><h3>{alert.title}</h3><code>{alert.query}</code><dl><div><dt>Condition</dt><dd>{alert.condition}</dd></div><div><dt>For</dt><dd>{alert.for}</dd></div><div><dt>No data / error</dt><dd>{alert.noDataState} / {alert.errorState}</dd></div></dl></article>)}</div>
+        </AlertTopic>
+
+        <div className="alert-state-topics">
+          <AlertTopic title="Pending" description="A rule is Pending while its threshold is breached but the configured duration has not elapsed. Recovery during this window prevents a notification.">
+            <div className="alert-state-card pending"><strong>{alerting?.pendingRules ?? 0}</strong><span>rules pending now</span><small>Use the pending scenario to hold all rules above threshold without opening incidents.</small></div>
+          </AlertTopic>
+          <AlertTopic title="Firing" description="A rule becomes Firing only after the breach remains true for the full pending duration. Entering Firing creates an incident and routes a notification.">
+            <div className="alert-state-card firing"><strong>{alerting?.firingRules ?? 0}</strong><span>rules firing now</span><small>{alerting?.incidentCount ?? 0} distinct firing transitions occurred in this window.</small></div>
+          </AlertTopic>
+        </div>
+
+        <div className="alerting-analytics">
+          <div><h4>State and notification timeline</h4><AlertingTimeline points={alerting?.timeline.slice(-48) ?? []} /><div className="alerting-legend"><span className="pending">Pending</span><span className="firing">Firing</span><span className="delivered">Delivered</span><span className="suppressed">Suppressed</span></div></div>
+          <div><h4>Rule health</h4>{alerting?.rules.map(rule => <article className="alert-rule-health" key={rule.uid}><span className={`grafana-alert-state ${rule.state.toLowerCase()}`}>{rule.state}</span><div><strong>{rule.title}</strong><small>{rule.evaluations} evaluations · {rule.transitions} transitions · {rule.notifications} notifications</small></div></article>)}</div>
+        </div>
+
+        <AlertTopic title="Notification channels" description="Notification policies route by severity and lifecycle, then grouping and cooldown settings control cadence.">
+          <div className="notification-channel-grid">{data?.notificationChannels.map(channel => { const usage = alerting?.channels.find(item => item.name === channel.name); return <article key={channel.name}><div><strong>{channel.name}</strong><span className="pill completed">{channel.provisioned ? 'Provisioned' : 'Example'}</span></div><p>{channel.type} · {channel.route}</p><small>{channel.cadence}</small><dl><div><dt>Attempts</dt><dd>{usage?.attempts ?? 0}</dd></div><div><dt>Delivered</dt><dd>{usage?.delivered ?? 0}</dd></div><div><dt>Suppressed</dt><dd>{usage?.suppressed ?? 0}</dd></div></dl></article>; })}</div>
+        </AlertTopic>
+
+        <AlertTopic title="Alert fatigue" description="Fatigue is visible as repeated or suppressed notifications per distinct incident. The alert-fatigue scenario intentionally flaps to make this cost measurable.">
+          <div className="alert-fatigue-layout"><div className="alert-fatigue-score"><strong>{alerting ? `${alerting.noiseRatioPercent.toFixed(1)}%` : '--'}</strong><span>notification noise</span><small>{alerting?.notificationAttempts ?? 0} attempts for {alerting?.incidentCount ?? 0} incidents</small></div><div className="alert-fatigue-practices">{data?.alertFatigue.map((practice, index) => <article key={practice.title}><span>{index + 1}</span><div><strong>{practice.title}</strong><p>{practice.description}</p></div></article>)}</div></div>
+        </AlertTopic>
+
+        <div className="alerting-recent"><h4>Recent alert events</h4><div className="table-wrap compact-table"><table><thead><tr><th>Time</th><th>Type</th><th>Rule</th><th>Detail</th><th>Scenario</th></tr></thead><tbody>{alerting?.recentEvents.map((event, index) => <tr key={`${event.timestamp}-${event.type}-${index}`}><td>{new Date(event.timestamp).toLocaleTimeString()}</td><td>{event.type}</td><td>{event.rule}</td><td>{event.detail}</td><td><code>{event.scenario}</code></td></tr>)}</tbody></table></div></div>
       </LabSection>
 
       <LabSection id="grafana-correlation" eyebrow="09 · Correlation" title="Move between logs, metrics, and traces without losing context" description="The seed path emits real logs and measurements inside sampled spans. The same trace and span identities are retained by Loki, Prometheus exemplars, and Tempo so every pivot can be tested in Grafana.">
@@ -158,6 +206,16 @@ export function GrafanaDashboard({ model }: { model: GrafanaDashboardModel }) {
 
 function LabSection({ id, eyebrow, title, description, children }: { id: string; eyebrow: string; title: string; description: string; children: React.ReactNode }) {
   return <section className="grafana-section" id={id}><div className="otel-subheading"><p className="eyebrow">{eyebrow}</p><h3>{title}</h3><p className="muted">{description}</p></div>{children}</section>;
+}
+
+function AlertTopic({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+  const id = `alert-topic-${title.toLowerCase().replace(/ /g, '-')}`;
+  return <section className="alert-topic" aria-labelledby={id}><div><h4 id={id}>{title}</h4><p>{description}</p></div>{children}</section>;
+}
+
+function AlertingTimeline({ points }: { points: AlertingTimelinePoint[] }) {
+  const maximum = Math.max(1, ...points.map(point => Math.max(point.pending, point.firing, point.delivered + point.suppressed)));
+  return <div className="alerting-timeline" aria-label="Alert states and notifications over time">{points.map(point => <div key={point.timestamp} title={`${new Date(point.timestamp).toLocaleTimeString()}: ${point.pending} pending, ${point.firing} firing, ${point.delivered} delivered, ${point.suppressed} suppressed`}><i className="pending" style={{ height: `${point.pending / maximum * 100}%` }} /><i className="firing" style={{ height: `${point.firing / maximum * 100}%` }} />{point.delivered > 0 && <b style={{ bottom: `${Math.min(90, point.delivered / maximum * 100)}%` }} />}{point.suppressed > 0 && <em />}</div>)}{points.length === 0 && <p className="chart-empty">Waiting for alert evaluations...</p>}</div>;
 }
 
 function QueryTimeline({ points }: { points: GrafanaTimelinePoint[] }) {

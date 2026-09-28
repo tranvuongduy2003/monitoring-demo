@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { grafanaService } from '@/domains/grafana/services/grafanaService';
-import type { GrafanaCorrelationSeedResult, GrafanaSeedResult } from '@/domains/grafana/types';
+import type { AlertingSeedResult, GrafanaCorrelationSeedResult, GrafanaSeedResult } from '@/domains/grafana/types';
 import { usePollingQuery } from '@/shared/hooks/usePollingQuery';
 
 export function useGrafanaDashboard() {
@@ -9,6 +9,8 @@ export function useGrafanaDashboard() {
   const [seedResult, setSeedResult] = useState<GrafanaSeedResult | null>(null);
   const [correlationSeeding, setCorrelationSeeding] = useState(false);
   const [correlationSeedResult, setCorrelationSeedResult] = useState<GrafanaCorrelationSeedResult | null>(null);
+  const [alertingSeeding, setAlertingSeeding] = useState('');
+  const [alertingSeedResult, setAlertingSeedResult] = useState<AlertingSeedResult | null>(null);
   const [error, setError] = useState('');
 
   async function seedGrafana() {
@@ -39,5 +41,19 @@ export function useGrafanaDashboard() {
     }
   }
 
-  return { overview, seeding, seedResult, correlationSeeding, correlationSeedResult, error, seedGrafana, seedCorrelations };
+  async function seedAlerting(scenario: string) {
+    setAlertingSeeding(scenario);
+    setError('');
+    try {
+      const result = await grafanaService.seedAlerting(scenario);
+      setAlertingSeedResult(result);
+      await overview.refetch();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not seed alerting analytics');
+    } finally {
+      setAlertingSeeding('');
+    }
+  }
+
+  return { overview, seeding, seedResult, correlationSeeding, correlationSeedResult, alertingSeeding, alertingSeedResult, error, seedGrafana, seedCorrelations, seedAlerting };
 }

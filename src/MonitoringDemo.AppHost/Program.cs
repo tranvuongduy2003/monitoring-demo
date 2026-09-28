@@ -42,6 +42,7 @@ var defaultFrontendUrl = $"http://localhost:{frontendPort}";
 var defaultApiUrl = $"http://localhost:{apiPort}";
 var defaultGrafanaUrl = $"http://localhost:{grafanaPort}";
 var defaultPrometheusUrl = $"http://localhost:{prometheusPort}";
+var defaultAlertWebhookUrl = $"http://host.docker.internal:{apiPort}/api/grafana/alerting/notifications";
 var prometheusRetentionArgument = $"--storage.tsdb.retention.time={Get("PROMETHEUS_RETENTION_TIME", "15d")}";
 var prometheusFeatureArgument = $"--enable-feature={Get("PROMETHEUS_FEATURES", "exemplar-storage")}";
 
@@ -104,6 +105,7 @@ var grafana = builder.AddContainer("grafana", "grafana/grafana", Get("GRAFANA_IM
     .WithEnvironment("PROMETHEUS_DATASOURCE_URL", Get("PROMETHEUS_DATASOURCE_URL", defaultPrometheusDataSourceUrl))
     .WithEnvironment("LOKI_DATASOURCE_URL", Get("LOKI_DATASOURCE_URL", defaultLokiDataSourceUrl))
     .WithEnvironment("TEMPO_DATASOURCE_URL", Get("TEMPO_DATASOURCE_URL", defaultTempoDataSourceUrl))
+    .WithEnvironment("ALERT_WEBHOOK_URL", Get("ALERT_WEBHOOK_URL", defaultAlertWebhookUrl))
     .WaitFor(prometheus)
     .WaitFor(loki)
     .WaitFor(tempo);

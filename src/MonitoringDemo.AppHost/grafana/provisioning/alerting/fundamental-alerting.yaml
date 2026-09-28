@@ -1,0 +1,197 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: Primary on-call
+    receivers:
+      - uid: fundamental-primary-on-call
+        type: webhook
+        disableResolveMessage: false
+        settings:
+          url: $__env{ALERT_WEBHOOK_URL}
+          httpMethod: POST
+  - orgId: 1
+    name: Operations chat
+    receivers:
+      - uid: fundamental-operations-chat
+        type: webhook
+        disableResolveMessage: false
+        settings:
+          url: $__env{ALERT_WEBHOOK_URL}
+          httpMethod: POST
+  - orgId: 1
+    name: Incident archive
+    receivers:
+      - uid: fundamental-incident-archive
+        type: webhook
+        disableResolveMessage: false
+        settings:
+          url: $__env{ALERT_WEBHOOK_URL}
+          httpMethod: POST
+
+policies:
+  - orgId: 1
+    receiver: Operations chat
+    group_by: [grafana_folder, alertname]
+    group_wait: 10s
+    group_interval: 5m
+    repeat_interval: 4h
+    routes:
+      - receiver: Primary on-call
+        object_matchers:
+          - [severity, =, critical]
+        group_wait: 0s
+        repeat_interval: 30m
+
+groups:
+  - orgId: 1
+    name: Fundamental alerting
+    folder: MonitoringDemo
+    interval: 20s
+    rules:
+      - uid: checkout-error-rate
+        title: Checkout error rate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              datasource: { type: prometheus, uid: prometheus }
+              editorMode: code
+              expr: alerting_demo_signal_value{rule="checkout-error-rate"}
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              conditions: []
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator: { params: [10], type: gt }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { params: [], type: last }
+                  type: query
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: B
+              refId: C
+              type: threshold
+        dashboardUid: fundamental-alerting
+        panelId: 5
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: Checkout error rate is above 10%
+          description: The seeded checkout error-rate signal has remained above its threshold.
+        labels: { service: monitoring-demo, severity: critical, team: checkout }
+        isPaused: false
+
+      - uid: api-p95-latency
+        title: API p95 latency
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              datasource: { type: prometheus, uid: prometheus }
+              editorMode: code
+              expr: alerting_demo_signal_value{rule="api-p95-latency"}
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              conditions: []
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator: { params: [750], type: gt }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { params: [], type: last }
+                  type: query
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: B
+              refId: C
+              type: threshold
+        dashboardUid: fundamental-alerting
+        panelId: 5
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: API p95 latency is above 750 ms
+          description: The seeded latency signal has remained above its threshold.
+        labels: { service: monitoring-demo, severity: warning, team: platform }
+        isPaused: false
+
+      - uid: worker-queue-depth
+        title: Worker queue depth
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              datasource: { type: prometheus, uid: prometheus }
+              editorMode: code
+              expr: alerting_demo_signal_value{rule="worker-queue-depth"}
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              conditions: []
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator: { params: [80], type: gt }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { params: [], type: last }
+                  type: query
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: B
+              refId: C
+              type: threshold
+        dashboardUid: fundamental-alerting
+        panelId: 5
+        noDataState: NoData
+        execErrState: Error
+        for: 3m
+        annotations:
+          summary: Worker queue depth is above 80 jobs
+          description: The seeded queue signal has remained above its threshold.
+        labels: { service: monitoring-demo, severity: warning, team: platform }
+        isPaused: false

@@ -16,5 +16,22 @@ public static class GrafanaEndpoints
 
         group.MapPost("/correlation/seed", (int? count, GrafanaLabService lab) =>
             Results.Ok(lab.SeedCorrelations(count ?? 24)));
+
+        group.MapPost("/alerting/seed", (
+            string? scenario,
+            int? count,
+            FundamentalAlertingService alerting) =>
+            Results.Ok(alerting.Seed(scenario, count ?? 90)));
+
+        group.MapPost("/alerting/notifications", async (
+            HttpRequest request,
+            FundamentalAlertingService alerting) =>
+        {
+            using var reader = new StreamReader(request.Body);
+            string payload = await reader.ReadToEndAsync();
+            string summary = payload.Length > 160 ? $"{payload[..160]}…" : payload;
+            alerting.RecordWebhookNotification(summary);
+            return Results.Accepted();
+        });
     }
 }

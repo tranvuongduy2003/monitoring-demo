@@ -78,6 +78,8 @@ Telemetry is correlated through request, correlation, trace, and span identifier
 - Live distributed tracing lab covering traces, trace/span IDs, roots, parent-child relationships, durations, attributes, events, statuses, waterfalls, and TraceQL
 - Live context propagation lab covering distributed context, W3C Trace Context, `traceparent`, `tracestate`, HTTP headers, gRPC metadata, and fundamental baggage
 - Dedicated Grafana lab covering data sources, dashboards, panels, PromQL/LogQL/TraceQL queries, variables, Explore, annotations, fundamental alerting, and five correlation labs
+- Complete fundamental alerting lab covering threshold rules, Normal/Pending/Firing transitions, severity routing, provisioned webhook contact points, delivery analytics, suppression, and alert-fatigue measurement
+- Repeatable healthy, pending, firing, and alert-fatigue scenarios plus Prometheus metrics and a dedicated provisioned Grafana dashboard
 - Provisioned Grafana data sources, cross-signal correlations, dashboards, template variables, Loki annotations, and a Grafana-managed alert rule
 - Repeatable Grafana interaction seeding with query volume, errors, dashboard views, data-source latency, panel usage, annotations, and recent-activity analytics
 - Background order simulation, repeatable metric/trace seed endpoints, startup trace scenarios, and continuous bounded metric seeding so every visualization has test data

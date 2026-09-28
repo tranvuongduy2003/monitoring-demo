@@ -17,6 +17,7 @@ public sealed class GrafanaLabService
     private readonly TracingDemoSeeder _tracingSeeder;
     private readonly AppMetrics _appMetrics;
     private readonly AppActivitySource _activitySource;
+    private readonly FundamentalAlertingService _alerting;
     private readonly ILogger<GrafanaLabService> _logger;
     private readonly Counter<long> _dashboardViews;
     private readonly Counter<long> _queryRuns;
@@ -39,6 +40,7 @@ public sealed class GrafanaLabService
         TracingDemoSeeder tracingSeeder,
         AppMetrics appMetrics,
         AppActivitySource activitySource,
+        FundamentalAlertingService alerting,
         IMeterFactory meterFactory,
         ILogger<GrafanaLabService> logger)
     {
@@ -46,6 +48,7 @@ public sealed class GrafanaLabService
         _tracingSeeder = tracingSeeder;
         _appMetrics = appMetrics;
         _activitySource = activitySource;
+        _alerting = alerting;
         _logger = logger;
 
         var meter = meterFactory.Create(TelemetryConstants.MeterName);
@@ -139,7 +142,10 @@ public sealed class GrafanaLabService
             Variables,
             ExploreExamples,
             Annotations,
-            AlertRules,
+            _alerting.GetRuleDefinitions(),
+            FundamentalAlertingService.GetNotificationChannels(),
+            FundamentalAlertingService.GetFatiguePractices(),
+            _alerting.GetAnalytics(windowMinutes),
             Correlations,
             GetCorrelationAnalytics(windowMinutes));
     }
@@ -391,6 +397,7 @@ public sealed class GrafanaLabService
     private static readonly IReadOnlyList<GrafanaDashboardDefinition> Dashboards =
     [
         new("grafana-fundamentals", "Grafana Fundamentals", "Provisioned", 8, "Variables, mixed signals, annotations, and alert health"),
+        new("fundamental-alerting", "Fundamental Alerting", "Provisioned", 9, "Thresholds, state transitions, routing, notifications, and fatigue analytics"),
         new("monitoring-demo", "API Metrics", "Provisioned", 12, "Application and runtime Prometheus analytics"),
         new("monitoring-demo-logs", "Logs & Correlation", "Provisioned", 5, "Loki volume, errors, slow operations, and raw logs"),
         new("signal-correlation", "Signal Correlation", "Provisioned", 5, "Bidirectional logs, metrics, traces, IDs, and exemplars")
@@ -435,12 +442,6 @@ public sealed class GrafanaLabService
         new("Manual deployment", "Dashboard", "Created from the dashboard annotation UI", "deployment,manual", false)
     ];
 
-    private static readonly IReadOnlyList<GrafanaAlertRuleDefinition> AlertRules =
-    [
-        new("grafana-demo-query-errors", "Grafana demo query errors", "MonitoringDemo", "Prometheus", "sum(increase(grafana_demo_query_errors_total[5m]))", "Above 2", "1m", "NoData", "Normal", "Provisioned"),
-        new("high-order-error-rate", "High order error rate", "Prometheus rules", "Prometheus", "job:orders_failed:ratio5m > 0.2", "Above 20%", "2m", "NoData", "Normal", "Data source managed")
-    ];
-
     private static readonly IReadOnlyList<GrafanaCorrelationDefinition> Correlations =
     [
         new("Logs ↔ Traces", "Loki ↔ Tempo", "trace_id", "Loki derived field + Tempo tracesToLogsV2", "{service_name=\"MonitoringDemo.ApiService\"} | trace_id = `<trace-id>`", "Open a log's View trace link, then use Logs for this span to return to the exact log window."),
@@ -469,7 +470,7 @@ public sealed class GrafanaSeedService : BackgroundService
     }
 }
 
-public sealed record GrafanaOverview(DateTimeOffset GeneratedAt, int WindowMinutes, GrafanaAnalytics Analytics, IReadOnlyList<GrafanaDataSource> DataSources, IReadOnlyList<GrafanaDashboardDefinition> Dashboards, IReadOnlyList<GrafanaPanelDefinition> Panels, IReadOnlyList<GrafanaQueryDefinition> Queries, IReadOnlyList<GrafanaVariableDefinition> Variables, IReadOnlyList<GrafanaExploreExample> Explore, IReadOnlyList<GrafanaAnnotationDefinition> Annotations, IReadOnlyList<GrafanaAlertRuleDefinition> Alerting, IReadOnlyList<GrafanaCorrelationDefinition> Correlations, CorrelationAnalytics CorrelationAnalytics);
+public sealed record GrafanaOverview(DateTimeOffset GeneratedAt, int WindowMinutes, GrafanaAnalytics Analytics, IReadOnlyList<GrafanaDataSource> DataSources, IReadOnlyList<GrafanaDashboardDefinition> Dashboards, IReadOnlyList<GrafanaPanelDefinition> Panels, IReadOnlyList<GrafanaQueryDefinition> Queries, IReadOnlyList<GrafanaVariableDefinition> Variables, IReadOnlyList<GrafanaExploreExample> Explore, IReadOnlyList<GrafanaAnnotationDefinition> Annotations, IReadOnlyList<GrafanaAlertRuleDefinition> Alerting, IReadOnlyList<AlertNotificationChannel> NotificationChannels, IReadOnlyList<AlertFatiguePractice> AlertFatigue, AlertingAnalytics AlertingAnalytics, IReadOnlyList<GrafanaCorrelationDefinition> Correlations, CorrelationAnalytics CorrelationAnalytics);
 public sealed record GrafanaSeedResult(int Seeded, int Run, int TraceCount, int CorrelationCount, GrafanaAnalytics Analytics, CorrelationAnalytics CorrelationAnalytics);
 public sealed record GrafanaCorrelationSeedResult(int Seeded, int Run, CorrelationAnalytics Analytics);
 public sealed record GrafanaAnalytics(int QueryCount, int DashboardViewCount, int ErrorCount, int AnnotationCount, double AverageQueryDurationMilliseconds, double P95QueryDurationMilliseconds, int ActiveAlerts, IReadOnlyList<GrafanaTimelinePoint> Timeline, IReadOnlyList<GrafanaDataSourceUsage> DataSourceUsage, IReadOnlyList<GrafanaPanelUsage> PanelUsage, IReadOnlyList<GrafanaRecentActivity> RecentActivity);
@@ -484,7 +485,7 @@ public sealed record GrafanaQueryDefinition(string Language, string Title, strin
 public sealed record GrafanaVariableDefinition(string Name, string Type, string Definition, string Current, bool MultiValue, string Purpose);
 public sealed record GrafanaExploreExample(string Signal, string DataSource, string Query, string Workflow);
 public sealed record GrafanaAnnotationDefinition(string Name, string Source, string Query, string Tags, bool Enabled);
-public sealed record GrafanaAlertRuleDefinition(string Uid, string Title, string Group, string DataSource, string Query, string Condition, string For, string NoDataState, string State, string Source);
+public sealed record GrafanaAlertRuleDefinition(string Uid, string Title, string Group, string DataSource, string Query, string Condition, string For, string NoDataState, string ErrorState, string Severity, string State, string Source);
 public sealed record GrafanaCorrelationDefinition(string Title, string Signals, string JoinKey, string Configuration, string Query, string Workflow);
 public sealed record CorrelationAnalytics(int OperationCount, int LogCount, int MetricPointCount, int ExemplarCount, int UniqueTraceIds, int UniqueSpanIds, double AverageDurationMilliseconds, double P95DurationMilliseconds, IReadOnlyList<CorrelationTimelinePoint> Timeline, IReadOnlyList<CorrelationRecentOperation> RecentOperations);
 public sealed record CorrelationTimelinePoint(DateTimeOffset Timestamp, int Operations, int Failures, int Exemplars);

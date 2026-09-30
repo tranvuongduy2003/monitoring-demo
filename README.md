@@ -1,167 +1,119 @@
 # MonitoringDemo
 
-An end-to-end observability demo built with .NET 10, Aspire, React, PostgreSQL, OpenTelemetry, Prometheus, Loki, and Grafana.
+MonitoringDemo is an end-to-end observability learning environment built with .NET 10, .NET Aspire, React, PostgreSQL, OpenTelemetry, Prometheus, Loki, Tempo, and Grafana. The frontend is branded **Pulseboard** and provides live dashboards for exploring application telemetry and the services that store and query it.
 
 ## Architecture
 
-```text
-Browser
-   │ HTTP
-   ▼
-┌────────────────────────── .NET Aspire AppHost ──────────────────────────┐
-│                                                                        │
-│  React + Vite :5173                                                    │
-│         │                                                              │
-│         │ /api proxy                                                   │
-│         ▼                                                              │
-│  .NET Minimal API :5000                                                │
-│         │                                                              │
-│         ├── SQL reads/writes ───────────────► PostgreSQL :5432          │
-│         │                                                              │
-│         ├── /metrics ◄── scrape ───────────── Prometheus :9090          │
-│         │                                             ▲                │
-│         │                                             │ PromQL         │
-│         │                                             │                │
-│         ├── OTLP structured logs ────────► Loki :3100 │                │
-│         ├── LogQL analytics queries ─────►     ▲       │                │
-│         │                                     │ LogQL │                │
-│         │                                     │       │                │
-│         │                               Grafana :3000 ─┘                │
-│         │                                                              │
-│         └── OTLP metrics and traces ───────► Aspire Dashboard :17225   │
-│                                                                        │
-│  API hosted services                                                   │
-│    ├── Background order simulator ────────► PostgreSQL + telemetry     │
-│    ├── Logging seed service ──────────────► Loki                       │
-│    └── Metrics seed service ──────────────► Prometheus endpoint data   │
-│                                                                        │
-│  AppHost loads environment settings, injects service references,       │
-│  waits for dependencies, and manages the complete local stack.         │
-└────────────────────────────────────────────────────────────────────────┘
-```
+![MonitoringDemo observability architecture](observability.png)
 
-### Runtime flow
+Solid arrows represent runtime traffic or telemetry flow. Dashed arrows represent operator access, configuration, or orchestration. The Collector is the primary application telemetry path: it forwards traces to Tempo and logs to Loki, while Prometheus scrapes both its metrics exporter and the API's native metrics endpoint. The API queries all three backends to populate Pulseboard, and Grafana queries them independently for dashboards and cross-signal investigation.
 
-| Area | Responsibility |
+### Runtime components
+
+| Component | Responsibility |
 |---|---|
-| **Aspire AppHost** | Loads DevOps environment settings, starts every resource, injects service references, performs dependency health checks, and exposes local endpoints. |
-| **React frontend** | Displays order, metric, logging, tracing, and Grafana learning labs. Vite proxies `/api/*` requests to the API, so the browser does not need an internal service address. |
-| **API service** | Provides order/product endpoints, telemetry analytics, health checks, and the Prometheus `/metrics` endpoint. |
-| **OpenTelemetry Collector** | Receives OTLP over gRPC or HTTP, applies memory limiting and batching, and routes each signal to its configured exporters. |
-| **Background services** | Continuously create sample orders, metrics, and structured logs so dashboards contain useful data immediately. |
-| **PostgreSQL** | Stores products and orders. Aspire injects the generated database connection string into the API. |
-| **Prometheus** | Pulls metrics from `/metrics`; Grafana reads them with PromQL. |
-| **Loki** | Receives structured application logs over OTLP and serves LogQL queries to both the API and Grafana. |
-| **Tempo** | Receives OpenTelemetry traces over OTLP and serves TraceQL search plus trace-by-ID data to the API and Grafana. |
-| **Grafana** | Uses provisioned Prometheus, Loki, and Tempo data sources plus repository-managed dashboards. |
-| **Aspire Dashboard** | Displays resource state, distributed traces, metrics, and diagnostic information during local development. |
+| **Aspire AppHost** | Loads validated environment settings, starts the database and observability stack, injects service references, waits for dependencies, and exposes local endpoints. |
+| **Pulseboard frontend** | React and Vite application with workspace, telemetry, and reference pages. Vite proxies `/api/*` to the API. |
+| **API service** | Hosts application endpoints, health checks, telemetry instrumentation, and the Prometheus `/metrics` endpoint. |
+| **OpenTelemetry Collector** | Receives OTLP over gRPC or HTTP, applies memory limiting and batching, exports traces to Tempo and logs to Loki, and exposes received metrics in Prometheus format. |
+| **PostgreSQL** | Stores application data through Entity Framework Core. Aspire injects the database connection string. |
+| **Prometheus** | Scrapes the API and Collector, stores exemplars, evaluates provisioned rules, and serves PromQL queries. |
+| **Loki** | Stores OTLP application logs and serves LogQL queries. |
+| **Tempo** | Stores distributed traces and serves TraceQL and trace-by-ID queries. |
+| **Grafana** | Uses provisioned Prometheus, Loki, and Tempo data sources, dashboards, correlations, annotations, and alerting resources. |
+| **Aspire Dashboard** | Shows resource state and development telemetry for the distributed application. |
 
-Telemetry is correlated through request, correlation, trace, and span identifiers. Environment variables control public ports, container versions, credentials, retention, scrape intervals, and service URLs.
-
-## Features
-
-- Custom OpenTelemetry counters, gauges, histograms, traces, and structured logs
-- Complete application monitoring lab covering HTTP, database, cache, dependencies, custom metrics, custom spans, and typed errors
-- Healthy, cache-pressure, and dependency-outage seed scenarios with windowed analytics, live React visualizations, PromQL examples, alerts, and a provisioned Grafana dashboard
-- Dedicated monitoring methodologies lab covering RED, USE, and the Four Golden Signals with correlated request/resource analytics
-- Repeatable baseline, traffic-spike, and failure-burst seeding plus continuous Prometheus-ready samples and a provisioned Grafana dashboard
-- Dedicated OpenTelemetry architecture lab covering the API, SDK, automatic and manual instrumentation, resources, semantic conventions, Tracer, Meter, Logger, and W3C propagators
-- Repeatable multi-signal OpenTelemetry seeding with an in-process timeline, per-operation analytics, error counts, and latency statistics
-- Dedicated OTLP transport lab covering OTLP, OTLP/gRPC, OTLP/HTTP, signal paths, ports, endpoint precedence, and live non-secret configuration
-- Repeatable OTLP batch seeding with protocol and signal breakdowns, payload compression, retry/failure counts, latency percentiles, and recent export visualization
-- Production-shaped OpenTelemetry Collector topology with OTLP receivers, memory limiting, batching, per-signal pipelines, Tempo/Loki exporters, and a Prometheus scrape endpoint
-- Repeatable Collector pipeline seeding with receiver throughput, signal routing, batch triggers, memory pressure, retry/drop counts, and latency analytics
-- Bidirectional logs ↔ traces and metrics ↔ traces correlation in Grafana, with trace-ID and span-ID filtering
-- Trace-based OpenTelemetry exemplars stored by Prometheus and linked to real Tempo traces
-- Repeatable correlation seeding with per-minute operations, logs, metric points, exemplars, latency, failures, and recent ID analytics
-- Prometheus metric scraping and Loki OTLP log storage
-- Live Prometheus architecture lab covering pull collection, scrape intervals, targets, jobs, instances, exporters, service discovery, TSDB retention, and rules
-- Live Fundamental PromQL lab covering metric selection, label filtering, instant and range vectors, `sum`, `avg`, `min`, `max`, `count`, `rate`, `increase`, `by`, `without`, and `histogram_quantile`
-- Live distributed tracing lab covering traces, trace/span IDs, roots, parent-child relationships, durations, attributes, events, statuses, waterfalls, and TraceQL
-- Live context propagation lab covering distributed context, W3C Trace Context, `traceparent`, `tracestate`, HTTP headers, gRPC metadata, and fundamental baggage
-- Dedicated Grafana lab covering data sources, dashboards, panels, PromQL/LogQL/TraceQL queries, variables, Explore, annotations, fundamental alerting, and five correlation labs
-- Complete fundamental alerting lab covering threshold rules, Normal/Pending/Firing transitions, severity routing, provisioned webhook contact points, delivery analytics, suppression, and alert-fatigue measurement
-- Repeatable healthy, pending, firing, and alert-fatigue scenarios plus Prometheus metrics and a dedicated provisioned Grafana dashboard
-- Provisioned Grafana data sources, cross-signal correlations, dashboards, template variables, Loki annotations, and a Grafana-managed alert rule
-- Repeatable Grafana interaction seeding with query volume, errors, dashboard views, data-source latency, panel usage, annotations, and recent-activity analytics
-- Background order simulation, repeatable metric/trace seed endpoints, startup trace scenarios, and continuous bounded metric seeding so every visualization has test data
-- File-based target discovery plus provisioned recording and alerting rules
-- React workspace with focused pages for orders, OpenTelemetry, OTLP, Collector, metrics, Prometheus, logs, traces, Grafana, and learning resources
-- Responsive application shell with persistent desktop navigation and a mobile sidebar
-- Domain-oriented frontend with strict `@/` absolute imports
-- Environment-driven local and DevOps configuration
+Telemetry carries correlation, trace, and span identifiers across the application so signals can be followed between Pulseboard, Grafana, Prometheus, Loki, and Tempo.
 
 ## Requirements
 
-- .NET SDK 10+
+- .NET SDK 10.0.203 or a compatible later patch
 - Node.js 20+
-- Docker Desktop
+- Docker Desktop or another Docker-compatible container runtime
 
 ## Quick start
+
+From the repository root:
 
 ```powershell
 Copy-Item src/MonitoringDemo.AppHost/.env.example src/MonitoringDemo.AppHost/.env
 
 Push-Location src/MonitoringDemo.Frontend
-npm install
+npm ci
 Pop-Location
 
 dotnet run --project src/MonitoringDemo.AppHost
 ```
 
+Keep the terminal open while Aspire runs the stack. Open the Aspire Dashboard URL printed at startup, or go directly to `http://localhost:5173` for Pulseboard. The default Grafana credentials from the example environment file are `admin` / `change-me`; change them before using the stack outside local development.
+
 ## Local services
 
-| Service | URL | Credentials |
+The example AppHost environment exposes these defaults:
+
+| Service | URL | Notes |
 |---|---|---|
-| Frontend | `http://localhost:5173` | — |
-| API | `http://localhost:5000` | — |
-| API metrics | `http://localhost:5000/metrics` | — |
-| Prometheus | `http://localhost:9090` | — |
-| Loki | `http://localhost:3100/ready` | — |
-| Tempo | `http://localhost:3200/ready` | — |
+| Pulseboard | `http://localhost:5173` | React frontend |
+| API | `http://localhost:5000` | Application endpoints |
+| API metrics | `http://localhost:5000/metrics` | Native Prometheus scrape endpoint |
+| API health | `http://localhost:5000/health` | Dependency health |
+| API liveness | `http://localhost:5000/alive` | Process liveness |
+| Prometheus | `http://localhost:9090` | PromQL and target status |
+| Loki | `http://localhost:3100/ready` | Log store readiness |
+| Tempo | `http://localhost:3200/ready` | Trace store readiness |
 | Grafana | `http://localhost:3000` | `admin` / configured password |
-| Aspire dashboard | `https://localhost:17225` | Launch token |
+| Aspire Dashboard | `https://localhost:17225` | Use the launch token from startup output |
 
-Ports and credentials can be changed in the AppHost `.env` file.
-Tempo also exposes its standard OTLP receivers on port `4317` for gRPC and `4318` for HTTP/protobuf.
-The Collector receives application telemetry on host ports `14317` (gRPC) and `14318` (HTTP), and exposes transformed metrics for Prometheus on `9464`.
+Additional telemetry endpoints:
 
-## Environment files
-
-Local `.env` files are ignored by Git. Committed templates document every supported setting:
-
-| Layer | Template |
+| Endpoint | Default port |
 |---|---|
-| Frontend | `src/MonitoringDemo.Frontend/.env.example` |
-| API standalone mode | `src/MonitoringDemo.ApiService/.env.example` |
-| Aspire and DevOps | `src/MonitoringDemo.AppHost/.env.example` |
+| Tempo OTLP/gRPC | `4317` |
+| Tempo OTLP/HTTP | `4318` |
+| Collector OTLP/gRPC | `14317` |
+| Collector OTLP/HTTP | `14318` |
+| Collector Prometheus exporter | `9464` |
 
-Shell, IDE, CI, and deployment environment variables take precedence over `.env` values.
+All ports, credentials, image tags, retention periods, scrape intervals, and service URLs can be changed in the AppHost `.env` file.
+
+## Configuration
+
+Local `.env` files are ignored by Git. The committed templates document the supported settings for each execution mode:
+
+| Layer | Template | Use |
+|---|---|---|
+| Aspire stack | `src/MonitoringDemo.AppHost/.env.example` | Full local environment and its public ports |
+| API | `src/MonitoringDemo.ApiService/.env.example` | Running the API without Aspire |
+| Frontend | `src/MonitoringDemo.Frontend/.env.example` | Running Vite without Aspire |
+
+Shell, IDE, CI, and deployment environment variables take precedence over values loaded from `.env` files. When Aspire runs the project, it supplies the API connection string, service endpoints, and frontend API reference automatically.
 
 ## Project structure
 
 ```text
 src/
-├── MonitoringDemo.AppHost/          Aspire composition root
-│   ├── Configuration/               Validated, typed environment settings
-│   ├── Orchestration/               Database, observability, and workload resources
-│   ├── grafana/                      Provisioning and dashboards
-│   ├── otel-collector/               Collector pipelines
-│   ├── prometheus/                   Scraping, targets, and rules
-│   ├── loki/                         Log storage configuration
-│   └── tempo/                        Trace storage configuration
-├── MonitoringDemo.ApiService/       Feature-oriented backend
-│   ├── Domain/                       Core entities and domain constants
-│   ├── Features/                     Vertical API slices (endpoint, service, contracts)
-│   ├── Hosting/                      Dependency injection and HTTP pipeline composition
-│   └── Infrastructure/               Persistence, observability, and telemetry adapters
-├── MonitoringDemo.Frontend/         React dashboard
-│   └── src/
-│       ├── app/                      Application entry and routing
-│       ├── pages/                    Focused page composition
-│       ├── domains/                  Orders, metrics, logging, and tracing
-│       └── shared/                   Reusable UI, hooks, and services
-└── MonitoringDemo.ServiceDefaults/  Shared hosting, health, configuration, and telemetry defaults
+|-- MonitoringDemo.AppHost/          Aspire composition root
+|   |-- Configuration/               Validated, typed environment settings
+|   |-- Orchestration/               Database, observability, and app resources
+|   |-- grafana/                     Data sources, dashboards, and alerting
+|   |-- loki/                        Log storage configuration
+|   |-- otel-collector/              OTLP receivers, processors, and exporters
+|   |-- prometheus/                  Scraping, targets, and rules
+|   `-- tempo/                       Trace storage configuration
+|-- MonitoringDemo.ApiService/       Feature-oriented .NET Minimal API
+|   |-- Domain/                      Entities and domain constants
+|   |-- Features/                    Vertical API slices and services
+|   |-- Hosting/                     Dependency injection and HTTP composition
+|   `-- Infrastructure/              Persistence and observability adapters
+|-- MonitoringDemo.Frontend/         Pulseboard React application
+|   `-- src/
+|       |-- app/                     Routing and application entry
+|       |-- components/              Shared UI primitives
+|       |-- domains/                 Domain dashboards, hooks, services, and types
+|       |-- pages/                   Route-level page composition
+|       |-- shared/                  Cross-domain components and utilities
+|       `-- styles/                  Design tokens and glass UI system
+`-- MonitoringDemo.ServiceDefaults/ Shared health, configuration, and telemetry setup
 ```
 
 ## Validation

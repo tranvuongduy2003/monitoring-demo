@@ -20,7 +20,7 @@ public sealed class MonitoringMethodologySeeder
         _logger = logger;
     }
 
-    public MonitoringMethodologySnapshot Seed(
+    public int Seed(
         string scenario,
         int requestCount,
         int windowMinutes = 60,
@@ -65,7 +65,7 @@ public sealed class MonitoringMethodologySeeder
                 scenario);
         }
 
-        return _metrics.GetSnapshot(windowMinutes);
+        return requestCount;
     }
 
     public string GetActiveScenario() =>

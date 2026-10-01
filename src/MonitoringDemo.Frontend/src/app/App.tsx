@@ -1,21 +1,31 @@
 import { useEffect, useState } from 'react';
-import { readRoute, routes, type AppRoute } from '@/app/routes';
-import { AppShell } from '@/shared/components/AppShell';
+import { ScenarioConsole } from '@/features/scenarios/ScenarioConsole';
+import { LearnPage } from '@/pages/LearnPage';
+import { AppShell, type AppRoute } from '@/shared/components/AppShell';
 
 export default function App() {
-  const [route, setRoute] = useState<AppRoute>(readRoute);
+  const [route, setRoute] = useState(readRoute);
 
   useEffect(() => {
-    const handleRouteChange = () => setRoute(readRoute());
-    window.addEventListener('hashchange', handleRouteChange);
-    return () => window.removeEventListener('hashchange', handleRouteChange);
+    const onHashChange = () => setRoute(readRoute());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
   useEffect(() => {
-    document.title = `${routes[route].title} · Pulseboard`;
+    document.title = route === 'learn'
+      ? 'Learn · Observability Scenario Lab'
+      : 'Scenario Lab · Observability data generator';
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [route]);
 
-  const ActivePage = routes[route].component;
-  return <AppShell activeRoute={route}><ActivePage /></AppShell>;
+  return (
+    <AppShell activeRoute={route}>
+      {route === 'learn' ? <LearnPage /> : <ScenarioConsole />}
+    </AppShell>
+  );
+}
+
+function readRoute(): AppRoute {
+  return window.location.hash.replace(/^#\/?/, '') === 'learn' ? 'learn' : 'scenarios';
 }

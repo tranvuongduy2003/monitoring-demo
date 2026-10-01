@@ -31,7 +31,6 @@ public sealed record AppHostSettings(
         string localHost = "localhost";
         string prometheusUrl = $"http://{localHost}:{ports.Prometheus}";
         string lokiUrl = $"http://{localHost}:{ports.Loki}";
-        string tempoUrl = $"http://{localHost}:{ports.Tempo}";
         string apiUrl = $"http://{localHost}:{ports.Api}";
         string frontendUrl = $"http://{localHost}:{ports.Frontend}";
         string grafanaUrl = $"http://{localHost}:{ports.Grafana}";
@@ -67,9 +66,6 @@ public sealed record AppHostSettings(
                 Url(configuration, "LOKI_OTLP_ENDPOINT", $"{lokiUrl}/otlp/v1/logs"),
                 Url(configuration, "TEMPO_OTLP_ENDPOINT", $"http://{localHost}:{ports.TempoOtlpHttp}/v1/traces"),
                 Url(configuration, "COLLECTOR_OTLP_ENDPOINT", $"http://{localHost}:{ports.CollectorOtlpGrpc}"),
-                Url(configuration, "LOKI_BASE_URL", lokiUrl),
-                Url(configuration, "TEMPO_BASE_URL", tempoUrl),
-                Url(configuration, "PROMETHEUS_BASE_URL", prometheusUrl),
                 Origins(configuration, "CORS_ALLOWED_ORIGINS", frontendUrl)),
             new FrontendSettings(
                 Url(configuration, "VITE_API_PUBLIC_URL", apiUrl),

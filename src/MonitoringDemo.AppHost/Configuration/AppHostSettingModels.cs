@@ -47,9 +47,6 @@ public sealed record ApiSettings(
     string LokiOtlpEndpoint,
     string TempoOtlpEndpoint,
     string CollectorOtlpEndpoint,
-    string LokiBaseUrl,
-    string TempoBaseUrl,
-    string PrometheusBaseUrl,
     string AllowedOrigins);
 
 public sealed record FrontendSettings(

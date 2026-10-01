@@ -56,7 +56,6 @@ export function LearningTabs() {
 
   function selectTopic(topicId: LearningTopicId) {
     setActiveTopicId(topicId);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {

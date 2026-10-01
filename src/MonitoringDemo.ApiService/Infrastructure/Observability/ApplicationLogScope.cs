@@ -9,11 +9,7 @@ public sealed record ApplicationLogScope
     public string? RequestId { get; init; }
     public string? TraceId { get; init; }
     public string? SpanId { get; init; }
-    public string? Region { get; init; }
-    public string? TenantId { get; init; }
-    public int? ProductId { get; init; }
-    public string? ProductCategory { get; init; }
-    public string? Worker { get; init; }
+    public string? Scenario { get; init; }
     public bool? SeedData { get; init; }
 }
 
@@ -44,11 +40,7 @@ public static class ApplicationLogScopeExtensions
             AddIfPresent(properties, LogPropertyNames.RequestId, context.RequestId);
             AddIfPresent(properties, LogPropertyNames.TraceId, context.TraceId);
             AddIfPresent(properties, LogPropertyNames.SpanId, context.SpanId);
-            AddIfPresent(properties, LogPropertyNames.Region, context.Region);
-            AddIfPresent(properties, LogPropertyNames.TenantId, context.TenantId);
-            AddIfPresent(properties, LogPropertyNames.ProductId, context.ProductId);
-            AddIfPresent(properties, LogPropertyNames.ProductCategory, context.ProductCategory);
-            AddIfPresent(properties, LogPropertyNames.Worker, context.Worker);
+            AddIfPresent(properties, LogPropertyNames.Scenario, context.Scenario);
             AddIfPresent(properties, LogPropertyNames.SeedData, context.SeedData);
 
             _properties = [.. properties];
@@ -89,10 +81,6 @@ public static class LogPropertyNames
     public const string RequestId = "request_id";
     public const string TraceId = "trace_id";
     public const string SpanId = "span_id";
-    public const string Region = "region";
-    public const string TenantId = "tenant_id";
-    public const string ProductId = "product_id";
-    public const string ProductCategory = "product_category";
-    public const string Worker = "worker";
+    public const string Scenario = "scenario";
     public const string SeedData = "seed_data";
 }

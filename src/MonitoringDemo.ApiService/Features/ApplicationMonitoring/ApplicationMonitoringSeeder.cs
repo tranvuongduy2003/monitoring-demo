@@ -21,7 +21,7 @@ public sealed class ApplicationMonitoringSeeder
         _logger = logger;
     }
 
-    public ApplicationMonitoringSnapshot Seed(string? requestedScenario, int transactionCount, int windowMinutes = 60, bool writeLog = true)
+    public int Seed(string? requestedScenario, int transactionCount, int windowMinutes = 60, bool writeLog = true)
     {
         string scenario = NormalizeScenario(requestedScenario);
         var random = new Random(20260928 + Interlocked.Increment(ref _sequence));
@@ -42,7 +42,7 @@ public sealed class ApplicationMonitoringSeeder
             _logger.LogInformation("Seeded {TransactionCount} application monitoring transactions for {Scenario}", transactionCount, scenario);
         }
 
-        return _metrics.GetSnapshot(windowMinutes);
+        return transactionCount;
     }
 
     public static string NormalizeScenario(string? scenario) =>
